@@ -88,17 +88,18 @@ else
         --database-version=POSTGRES_15 \
         --tier=db-f1-micro \
         --region="$REGION" \
-        --network=default \
-        --assign-ip \
-        --authorized-networks=0.0.0.0/0 \
-        --backup \
+        --root-password="$DB_PASSWORD" \
         --project="$PROJECT_ID"
     
-    # Set root password
-    gcloud sql users set-password postgres \
-        --instance="$DB_INSTANCE_NAME" \
-        --password="$DB_PASSWORD" \
-        --project="$PROJECT_ID"
+    echo -e "${GREEN}✓ Cloud SQL instance created${NC}"
+    echo ""
+    
+    # Wait for instance to be ready
+    echo -e "${YELLOW}Waiting for instance to be ready...${NC}"
+    gcloud sql operations wait --project="$PROJECT_ID" \
+        $(gcloud sql operations list --instance="$DB_INSTANCE_NAME" \
+        --filter="status:RUNNING" --format="value(name)" --limit=1) \
+        2>/dev/null || true
     
     # Create application user
     gcloud sql users create owasp_user \
