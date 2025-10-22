@@ -1,0 +1,11 @@
+{
+  "name": "@owasp-demo/shared",
+  "version": "1.0.0",
+  "description": "Shared types and utilities for OWASP Vulnerabilities Demo",
+  "main": "types.ts",
+  "types": "types.ts",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "MIT"
+}

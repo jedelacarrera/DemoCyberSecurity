@@ -1,0 +1,86 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: owasp-demo-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: owasp_demo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - owasp-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: owasp-demo-backend
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: owasp_demo
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: dev-secret-key-change-in-production
+      SESSION_SECRET: dev-session-secret-change-in-production
+      CORS_ORIGIN: http://localhost:3000
+      ENABLE_VULNERABLE_ENDPOINTS: "true"
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src
+    command: sh -c "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all && npm run dev"
+    networks:
+      - owasp-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001
+    container_name: owasp-demo-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - owasp-network
+
+  # Attacker (for cross-origin attacks demo)
+  attacker:
+    build:
+      context: ./attacker
+      dockerfile: Dockerfile
+    container_name: owasp-demo-attacker
+    ports:
+      - "3002:80"
+    networks:
+      - owasp-network
+
+volumes:
+  postgres_data:
+
+networks:
+  owasp-network:
+    driver: bridge

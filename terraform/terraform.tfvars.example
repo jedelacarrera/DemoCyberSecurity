@@ -1,0 +1,22 @@
+# GCP Project Configuration
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+
+# Database Configuration
+db_name     = "owasp_demo"
+db_user     = "postgres"
+db_password = "CHANGE_ME_STRONG_PASSWORD"
+
+# Security Secrets (Generate strong random values!)
+jwt_secret     = "CHANGE_ME_JWT_SECRET"
+session_secret = "CHANGE_ME_SESSION_SECRET"
+
+# Security Settings
+# WARNING: Set to false in production!
+enable_vulnerable_endpoints = false
+
+# Docker Images (Update after building and pushing)
+backend_image  = "us-central1-docker.pkg.dev/your-project/owasp-demo/backend:latest"
+frontend_image = "us-central1-docker.pkg.dev/your-project/owasp-demo/frontend:latest"
+attacker_image = "us-central1-docker.pkg.dev/your-project/owasp-demo/attacker:latest"
+

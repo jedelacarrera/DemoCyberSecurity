@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iframe XSS Demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <div class="warning-banner">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <div>
+          <h1>🖼️ Iframe XSS Demo</h1>
+          <p>Demostración de XSS mediante iframes</p>
+        </div>
+      </div>
+      <a href="index.html" class="back-link">← Volver al Dashboard</a>
+    </header>
+
+    <main>
+      <div class="card">
+        <h2>¿Qué es XSS mediante Iframe?</h2>
+        <p>
+          Este ataque inserta un iframe malicioso que carga contenido vulnerable,
+          permitiendo ejecutar JavaScript en el contexto del sitio objetivo.
+        </p>
+      </div>
+
+      <div class="card danger">
+        <h2>Prueba de XSS</h2>
+        <p>Intenta inyectar un script en el campo de texto:</p>
+
+        <div class="input-group">
+          <label>Payload XSS:</label>
+          <input type="text" id="xssPayload" value='<script>alert("XSS!")</script>' class="input-field" />
+        </div>
+
+        <button onclick="testXSS()" class="btn btn-danger">
+          Probar XSS
+        </button>
+
+        <div id="result" class="status-box" style="margin-top: 16px;"></div>
+      </div>
+
+      <div class="card">
+        <h3>Payloads de Ejemplo</h3>
+        <div class="code-block">
+          <pre>&lt;script&gt;alert('XSS')&lt;/script&gt;
+&lt;img src=x onerror=alert('XSS')&gt;
+&lt;svg onload=alert('XSS')&gt;
+&lt;iframe src="javascript:alert('XSS')"&gt;
+&lt;body onload=alert('XSS')&gt;
+&lt;input onfocus=alert('XSS') autofocus&gt;</pre>
+        </div>
+      </div>
+
+      <div class="card success">
+        <h2>✅ Cómo Prevenir XSS</h2>
+        <ul>
+          <li><strong>Escapar HTML:</strong> Convertir caracteres especiales (&lt;, &gt;, &amp;, etc.)</li>
+          <li><strong>Validar Input:</strong> Whitelist de caracteres permitidos</li>
+          <li><strong>Content Security Policy (CSP):</strong> Header que restringe fuentes de scripts</li>
+          <li><strong>HTTPOnly Cookies:</strong> Prevenir acceso a cookies desde JavaScript</li>
+          <li><strong>Sanitización:</strong> Usar librerías como DOMPurify para HTML</li>
+          <li><strong>X-XSS-Protection:</strong> Header del navegador (legacy)</li>
+        </ul>
+      </div>
+
+      <div class="card info">
+        <h3>Tipos de XSS</h3>
+        <ul>
+          <li><strong>Stored XSS:</strong> El payload se guarda en la base de datos</li>
+          <li><strong>Reflected XSS:</strong> El payload se refleja en la respuesta inmediata</li>
+          <li><strong>DOM-based XSS:</strong> El payload modifica el DOM directamente</li>
+        </ul>
+      </div>
+    </main>
+
+    <footer>
+      <p>OWASP Vulnerabilities Demo - XSS Attack Simulation</p>
+    </footer>
+  </div>
+
+  <script>
+    function testXSS() {
+      const payload = document.getElementById('xssPayload').value;
+      const result = document.getElementById('result');
+
+      result.innerHTML = '⏳ Enviando payload al endpoint vulnerable...';
+      result.className = 'status-box warning';
+
+      fetch('http://localhost:3001/api/vulnerable/xss/posts', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: 'Test Post',
+          content: payload
+        })
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            result.innerHTML = `✅ Payload almacenado exitosamente!<br><br>
+                        <strong>Contenido guardado:</strong><br>
+                        <div class="code-block" style="margin-top: 8px;">
+                            <pre>${escapeHtml(payload)}</pre>
+                        </div><br>
+                        <em>El payload se ejecutará cuando alguien vea este post.</em>`;
+            result.className = 'status-box danger';
+          } else {
+            result.innerHTML = '❌ Ataque bloqueado: ' + (data.error || 'Protección XSS activa');
+            result.className = 'status-box success';
+          }
+        })
+        .catch(error => {
+          result.innerHTML = '⚠️ Error: ' + error.message;
+          result.className = 'status-box warning';
+        });
+    }
+
+    function escapeHtml(text) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    }
+  </script>
+</body>
+
+</html>

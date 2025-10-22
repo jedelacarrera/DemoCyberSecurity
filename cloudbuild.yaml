@@ -1,0 +1,156 @@
+# Cloud Build configuration for OWASP Demo
+# This builds and deploys all services to Cloud Run
+
+steps:
+  # Build Backend Docker Image
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build-backend"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/backend:${SHORT_SHA}"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/backend:latest"
+      - "./backend"
+
+  # Build Frontend Docker Image
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build-frontend"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/frontend:${SHORT_SHA}"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/frontend:latest"
+      - "--build-arg"
+      - "NEXT_PUBLIC_API_URL=${_BACKEND_URL}"
+      - "./frontend"
+
+  # Build Attacker Docker Image
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build-attacker"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/attacker:${SHORT_SHA}"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/attacker:latest"
+      - "./attacker"
+
+  # Push Backend Image
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-backend"
+    args:
+      - "push"
+      - "--all-tags"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/backend"
+    waitFor: ["build-backend"]
+
+  # Push Frontend Image
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-frontend"
+    args:
+      - "push"
+      - "--all-tags"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/frontend"
+    waitFor: ["build-frontend"]
+
+  # Push Attacker Image
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-attacker"
+    args:
+      - "push"
+      - "--all-tags"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/attacker"
+    waitFor: ["build-attacker"]
+
+  # Deploy Backend to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "deploy-backend"
+    entrypoint: "gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "${_SERVICE_NAME_BACKEND}"
+      - "--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/backend:${SHORT_SHA}"
+      - "--region=${_REGION}"
+      - "--platform=managed"
+      - "--allow-unauthenticated"
+      - "--set-env-vars=NODE_ENV=production,DB_HOST=/cloudsql/${PROJECT_ID}:${_REGION}:${_DB_INSTANCE_NAME},DB_USER=${_DB_USER},DB_NAME=${_DB_NAME},JWT_SECRET=${_JWT_SECRET},SESSION_SECRET=${_SESSION_SECRET},ENABLE_VULNERABLE_ENDPOINTS=${_ENABLE_VULNERABLE}"
+      - "--set-secrets=DB_PASSWORD=${_DB_PASSWORD_SECRET}:latest"
+      - "--add-cloudsql-instances=${PROJECT_ID}:${_REGION}:${_DB_INSTANCE_NAME}"
+      - "--memory=512Mi"
+      - "--cpu=1"
+      - "--min-instances=0"
+      - "--max-instances=10"
+    waitFor: ["push-backend"]
+
+  # Deploy Frontend to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "deploy-frontend"
+    entrypoint: "gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "${_SERVICE_NAME_FRONTEND}"
+      - "--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/frontend:${SHORT_SHA}"
+      - "--region=${_REGION}"
+      - "--platform=managed"
+      - "--allow-unauthenticated"
+      - "--set-env-vars=NEXT_PUBLIC_API_URL=${_BACKEND_URL}"
+      - "--memory=512Mi"
+      - "--cpu=1"
+      - "--min-instances=0"
+      - "--max-instances=10"
+    waitFor: ["push-frontend", "deploy-backend"]
+
+  # Deploy Attacker to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "deploy-attacker"
+    entrypoint: "gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "${_SERVICE_NAME_ATTACKER}"
+      - "--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/attacker:${SHORT_SHA}"
+      - "--region=${_REGION}"
+      - "--platform=managed"
+      - "--allow-unauthenticated"
+      - "--memory=256Mi"
+      - "--cpu=1"
+      - "--min-instances=0"
+      - "--max-instances=5"
+    waitFor: ["push-attacker"]
+
+# Images to be pushed to Artifact Registry
+images:
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/backend:${SHORT_SHA}"
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/backend:latest"
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/frontend:${SHORT_SHA}"
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/frontend:latest"
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/attacker:${SHORT_SHA}"
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/attacker:latest"
+
+# Build options
+options:
+  machineType: "E2_HIGHCPU_8"
+  logging: CLOUD_LOGGING_ONLY
+
+# Timeout for the entire build
+timeout: "1800s"
+
+# Substitution variables (can be overridden)
+substitutions:
+  _REGION: "us-central1"
+  _REPOSITORY: "owasp-demo"
+  _SERVICE_NAME_BACKEND: "owasp-demo-backend"
+  _SERVICE_NAME_FRONTEND: "owasp-demo-frontend"
+  _SERVICE_NAME_ATTACKER: "owasp-demo-attacker"
+  _DB_INSTANCE_NAME: "owasp-demo-db"
+  _DB_USER: "owasp_user"
+  _DB_NAME: "owasp_demo"
+  _DB_PASSWORD_SECRET: "db-password"
+  _JWT_SECRET: "your-jwt-secret-change-this"
+  _SESSION_SECRET: "your-session-secret-change-this"
+  _ENABLE_VULNERABLE: "true"
+  _BACKEND_URL: "https://owasp-demo-backend-XXXX-uc.a.run.app"

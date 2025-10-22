@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attacker Dashboard - OWASP Demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <div class="warning-banner">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <div>
+          <h1>⚠️ Sitio de Atacante - Simulación</h1>
+          <p>Este sitio simula un sitio web malicioso para demostrar ataques cross-origin.</p>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="card">
+        <h2>Ataques Disponibles</h2>
+        <p class="subtitle">Selecciona un ataque para ver la demostración</p>
+
+        <div class="attack-grid">
+          <a href="csrf-attack.html" class="attack-card">
+            <div class="attack-icon">🎣</div>
+            <h3>CSRF Attack</h3>
+            <p>Cross-Site Request Forgery</p>
+            <span class="badge danger">High</span>
+          </a>
+
+          <a href="iframe-xss.html" class="attack-card">
+            <div class="attack-icon">🖼️</div>
+            <h3>Iframe Injection</h3>
+            <p>XSS mediante iframes</p>
+            <span class="badge warning">Medium</span>
+          </a>
+
+          <a href="clickjacking.html" class="attack-card">
+            <div class="attack-icon">🖱️</div>
+            <h3>Clickjacking</h3>
+            <p>UI Redressing Attack</p>
+            <span class="badge warning">Medium</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="card info">
+        <h3>ℹ️ Información</h3>
+        <ul>
+          <li>Este servidor corre en un puerto diferente (3002) para simular un origen diferente</li>
+          <li>Los ataques solo funcionarán si la aplicación objetivo está configurada de forma insegura</li>
+          <li>Usa estos ejemplos solo en entornos de desarrollo aislados</li>
+        </ul>
+      </div>
+    </main>
+
+    <footer>
+      <p>OWASP Vulnerabilities Demo - Attacker Simulation © 2024</p>
+      <p class="small">Solo para propósitos educativos</p>
+    </footer>
+  </div>
+</body>
+
+</html>
