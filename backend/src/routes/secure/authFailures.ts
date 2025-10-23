@@ -125,7 +125,7 @@ router.post("/login-secure-session", loginRateLimiter, async (ctx) => {
     const sessionId = crypto.randomBytes(32).toString("hex");
 
     await Session.create({
-      userId: user.id,
+      userId: user.id!,
       token: sessionId,
       data: JSON.stringify({ username: user.username }),
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),

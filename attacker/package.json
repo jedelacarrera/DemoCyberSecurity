@@ -2,14 +2,20 @@
   "name": "owasp-demo-attacker",
   "version": "1.0.0",
   "description": "Attacker pages for cross-origin attack demonstrations",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "npx http-server public -p 3002 --cors"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
   "devDependencies": {
-    "http-server": "^14.1.1"
+    "http-server": "^14.1.1",
+    "nodemon": "^3.0.1"
   }
 }

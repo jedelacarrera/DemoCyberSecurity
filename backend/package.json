@@ -38,6 +38,7 @@
     "@types/koa__cors": "^5.0.0",
     "@types/koa__router": "^12.0.4",
     "@types/node": "^20.14.9",
+    "@types/node-fetch": "^2.6.11",
     "@types/validator": "^13.12.0",
     "sequelize-cli": "^6.6.2",
     "ts-node": "^10.9.2",

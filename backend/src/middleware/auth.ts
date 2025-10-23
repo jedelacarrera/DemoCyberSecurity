@@ -10,7 +10,14 @@ export interface JWTPayload {
 }
 
 export const authMiddleware = async (ctx: Context, next: Next) => {
-  const token = ctx.headers.authorization?.replace("Bearer ", "");
+  // Buscar token en header Authorization primero
+  let token = ctx.headers.authorization?.replace("Bearer ", "");
+
+  // Si no está en header, buscar en cookies (para CSRF demo)
+  if (!token && ctx.cookies.get("auth_token")) {
+    token = ctx.cookies.get("auth_token");
+    console.log("🍪 Token obtenido desde cookie (CSRF demo)");
+  }
 
   if (!token) {
     ctx.status = 401;

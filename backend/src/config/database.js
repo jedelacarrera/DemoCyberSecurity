@@ -18,11 +18,14 @@ module.exports = {
     port: process.env.DB_PORT || 5432,
     dialect: "postgres",
     logging: false,
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false,
-      },
-    },
+    // Don't use SSL when connecting via Cloud SQL Proxy (Unix socket)
+    dialectOptions: process.env.DB_HOST?.startsWith("/cloudsql")
+      ? {}
+      : {
+          ssl: {
+            require: true,
+            rejectUnauthorized: false,
+          },
+        },
   },
 };

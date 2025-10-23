@@ -46,7 +46,7 @@ export default function Navigation() {
             </Link>
 
             <a
-              href="https://github.com"
+              href="https://github.com/jedelacarrera/DemoCyberSecurity"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"

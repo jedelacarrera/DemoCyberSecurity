@@ -1,7 +1,7 @@
 import { DataTypes, Model, Sequelize } from "sequelize";
 
 export interface AuditLogAttributes {
-  id: number;
+  id?: number;
   action: string;
   userId?: number;
   ipAddress?: string;

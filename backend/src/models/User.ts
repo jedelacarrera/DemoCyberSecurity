@@ -2,7 +2,7 @@ import { DataTypes, Model, Sequelize } from "sequelize";
 import bcrypt from "bcrypt";
 
 export interface UserAttributes {
-  id: number;
+  id?: number;
   username: string;
   email: string;
   password: string;
@@ -13,6 +13,13 @@ export interface UserAttributes {
 
 export interface UserModel extends Model<UserAttributes>, UserAttributes {
   validatePassword(password: string): Promise<boolean>;
+}
+
+// Extend the Model prototype to include our custom methods
+declare module "sequelize" {
+  interface Model {
+    validatePassword?(password: string): Promise<boolean>;
+  }
 }
 
 export const UserFactory = (sequelize: Sequelize) => {
@@ -74,7 +81,7 @@ export const UserFactory = (sequelize: Sequelize) => {
   User.prototype.validatePassword = async function (
     password: string
   ): Promise<boolean> {
-    return bcrypt.compare(password, this.password);
+    return bcrypt.compare(password, (this as any).password);
   };
 
   return User;

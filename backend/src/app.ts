@@ -1,4 +1,4 @@
-import Koa from "koa";
+import Koa, { Context } from "koa";
 import bodyParser from "koa-bodyparser";
 import cors from "@koa/cors";
 import { config } from "./config";
@@ -37,10 +37,43 @@ import rateLimitingSecure from "./routes/secure/rateLimiting";
 
 const app = new Koa();
 
-// Middleware
+// Middleware - Smart CORS (vulnerable for /api/vulnerable/*, secure for others)
 app.use(
   cors({
-    origin: config.cors.origin,
+    origin: (ctx: Context): string => {
+      const origin = ctx.request.headers.origin;
+      const path = ctx.request.path;
+
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return "*";
+
+      // VULNERABLE ENDPOINTS: Allow all origins (demonstrates CORS misconfiguration)
+      if (path.startsWith("/api/vulnerable/")) {
+        console.log(
+          `⚠️  VULNERABLE CORS: Allowing origin ${origin} for vulnerable endpoint`
+        );
+        return origin;
+      }
+
+      // SECURE ENDPOINTS: Only allow whitelisted origins
+      const allowedOrigins = [
+        config.cors.origin,
+        process.env.ATTACKER_URL || "http://localhost:3002",
+        "http://localhost:3000", // Docker frontend
+        "http://localhost:3100", // Local frontend
+      ];
+
+      if (allowedOrigins.includes(origin)) {
+        console.log(`✅ SECURE CORS: Allowing whitelisted origin ${origin}`);
+        return origin;
+      } else {
+        console.log(
+          `🚫 SECURE CORS: Blocked origin ${origin} for secure endpoint`
+        );
+        // Return empty string to block (won't set CORS headers)
+        return "";
+      }
+    },
     credentials: true,
   })
 );

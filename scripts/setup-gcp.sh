@@ -79,11 +79,22 @@ echo -e "${GREEN}Step 3: Creating Cloud SQL instance...${NC}"
 echo -e "${YELLOW}This may take 5-10 minutes...${NC}"
 
 DB_INSTANCE_NAME="owasp-demo-db"
-DB_PASSWORD=$(openssl rand -base64 32)
 
+# Check if database instance exists
 if gcloud sql instances describe "$DB_INSTANCE_NAME" --project="$PROJECT_ID" &> /dev/null; then
-    echo -e "${YELLOW}Database instance already exists, skipping...${NC}"
+    echo -e "${YELLOW}Database instance already exists${NC}"
+    
+    # Check if secret exists and get existing password
+    if gcloud secrets describe "db-password" --project="$PROJECT_ID" &> /dev/null; then
+        echo -e "${YELLOW}Using existing database password from Secret Manager${NC}"
+        DB_PASSWORD=$(gcloud secrets versions access latest --secret="db-password" --project="$PROJECT_ID")
+    else
+        echo -e "${YELLOW}No existing password found, generating new one${NC}"
+        DB_PASSWORD=$(openssl rand -base64 32)
+    fi
 else
+    echo -e "${YELLOW}Creating new database instance${NC}"
+    DB_PASSWORD=$(openssl rand -base64 32)
     gcloud sql instances create "$DB_INSTANCE_NAME" \
         --database-version=POSTGRES_15 \
         --tier=db-f1-micro \
@@ -174,11 +185,30 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     --role="roles/secretmanager.secretAccessor" \
     --condition=None
 
-echo -e "${GREEN}✓ Permissions configured${NC}"
+echo -e "${GREEN}✓ Cloud Build permissions configured${NC}"
+echo ""
+
+# Grant Cloud Run service account necessary permissions
+echo -e "${GREEN}Step 6: Configuring Cloud Run permissions...${NC}"
+
+# Get the default compute service account
+COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:$COMPUTE_SA" \
+    --role="roles/secretmanager.secretAccessor" \
+    --condition=None
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:$COMPUTE_SA" \
+    --role="roles/cloudsql.client" \
+    --condition=None
+
+echo -e "${GREEN}✓ Cloud Run permissions configured${NC}"
 echo ""
 
 # Configure Docker authentication
-echo -e "${GREEN}Step 6: Configuring Docker for Artifact Registry...${NC}"
+echo -e "${GREEN}Step 7: Configuring Docker for Artifact Registry...${NC}"
 gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 echo -e "${GREEN}✓ Docker configured${NC}"
 echo ""

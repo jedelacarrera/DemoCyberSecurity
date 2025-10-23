@@ -1,6 +1,6 @@
 import Router from "@koa/router";
-import { Op } from "sequelize";
-import { sequelize, User, Post } from "../../models";
+import { Op, QueryTypes } from "sequelize";
+import { sequelize, User, Post, UserModel } from "../../models";
 
 const router = new Router({ prefix: "/api/secure/sql-injection" });
 
@@ -55,7 +55,7 @@ router.post("/login", async (ctx) => {
       "SELECT * FROM users WHERE username = :username",
       {
         replacements: { username },
-        type: sequelize.QueryTypes.SELECT,
+        type: QueryTypes.SELECT,
       }
     );
 
@@ -63,7 +63,7 @@ router.post("/login", async (ctx) => {
       ctx.body = {
         success: true,
         message: "User found (password validation would happen here)",
-        data: { username: (results as any).username },
+        data: { username: (results as UserModel).username },
       };
     } else {
       ctx.status = 401;

@@ -1,7 +1,7 @@
 import { DataTypes, Model, Sequelize } from "sequelize";
 
 export interface SessionAttributes {
-  id: number;
+  id?: number;
   userId: number;
   token: string;
   data: string;

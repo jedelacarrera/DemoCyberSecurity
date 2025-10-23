@@ -109,7 +109,7 @@ router.post("/login-session-fixation", async (ctx) => {
     const finalSessionId = sessionId || `session_${Date.now()}`;
 
     await Session.create({
-      userId: user.id,
+      userId: user.id!,
       token: finalSessionId,
       data: JSON.stringify({ username: user.username }),
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),

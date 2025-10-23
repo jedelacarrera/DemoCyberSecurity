@@ -1,5 +1,5 @@
 import Router from "@koa/router";
-import { sequelize, User, Post } from "../../models";
+import { sequelize } from "../../models";
 
 const router = new Router({ prefix: "/api/vulnerable/sql-injection" });
 
@@ -9,23 +9,26 @@ router.get("/search", async (ctx) => {
 
   if (!query) {
     ctx.status = 400;
-    ctx.body = { success: false, error: "Query parameter is required" };
+    ctx.response.body = {
+      success: false,
+      error: "Query parameter is required",
+    };
     return;
   }
 
   try {
     // VULNERABILITY: Direct string concatenation in SQL query
     const [results] = await sequelize.query(
-      `SELECT * FROM users WHERE username LIKE '%${query}%' OR email LIKE '%${query}%'`
+      `SELECT * FROM users WHERE username = '${query}' OR email = '${query}'`
     );
 
-    ctx.body = {
+    ctx.response.body = {
       success: true,
       data: results,
     };
   } catch (error: any) {
     ctx.status = 500;
-    ctx.body = { success: false, error: error.message };
+    ctx.response.body = { success: false, error: "Internal server error" };
   }
 });
 

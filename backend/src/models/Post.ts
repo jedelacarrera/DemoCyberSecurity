@@ -1,7 +1,7 @@
 import { DataTypes, Model, Sequelize } from "sequelize";
 
 export interface PostAttributes {
-  id: number;
+  id?: number;
   title: string;
   content: string;
   userId: number;

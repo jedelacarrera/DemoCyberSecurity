@@ -17,7 +17,7 @@ router.get("/ping", async (ctx) => {
 
   try {
     // VULNERABILITY: User input directly in system command
-    const { stdout, stderr } = await execAsync(`ping -c 3 ${host}`);
+    const { stdout, stderr } = await execAsync(`ping -c 1 ${host}`);
 
     ctx.body = {
       success: true,

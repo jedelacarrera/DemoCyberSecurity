@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attacker Dashboard - Datos Robados</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+      color: #e0e0e0;
+      padding: 2rem;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: #dc3545;
+      color: white;
+      padding: 2rem;
+      border-radius: 10px;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      opacity: 0.9;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 1.5rem;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .stat-icon {
+      font-size: 2.5rem;
+    }
+
+    .stat-info h3 {
+      font-size: 0.9rem;
+      color: #aaa;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .section {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 2rem;
+      border-radius: 10px;
+      margin-bottom: 2rem;
+    }
+
+    .section h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .data-item {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      border-left: 4px solid #dc3545;
+    }
+
+    .data-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .timestamp {
+      color: #aaa;
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .data-content {
+      font-family: 'Courier New', monospace;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 1rem;
+      border-radius: 5px;
+      overflow-x: auto;
+      margin-top: 0.5rem;
+      color: #4af626;
+    }
+
+    .label {
+      font-weight: bold;
+      color: #ffc107;
+      margin-right: 0.5rem;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 3rem;
+      color: #aaa;
+      font-style: italic;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    button {
+      padding: 0.8rem 1.5rem;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 500;
+    }
+
+    .btn-refresh {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-refresh:hover {
+      background: #218838;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    }
+
+    .btn-clear {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-clear:hover {
+      background: #c82333;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: #aaa;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .pulse {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>🚨 Attacker Dashboard</h1>
+      <p class="subtitle">Monitoreo en tiempo real de datos robados mediante XSS</p>
+    </header>
+
+    <div class="controls">
+      <button class="btn-refresh" onclick="loadData()">🔄 Actualizar</button>
+      <button class="btn-clear" onclick="clearData()">🧹 Limpiar Datos</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-icon">🍪</div>
+        <div class="stat-info">
+          <h3>Cookies Robadas</h3>
+          <div class="stat-value" id="cookie-count">-</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">📤</div>
+        <div class="stat-info">
+          <h3>Datos Exfiltrados</h3>
+          <div class="stat-value" id="exfil-count">-</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">🔀</div>
+        <div class="stat-info">
+          <h3>Redirecciones</h3>
+          <div class="stat-value" id="redirect-count">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🍪 Cookies Robadas</h2>
+      <div id="cookies-list" class="loading pulse">Cargando...</div>
+    </div>
+
+    <div class="section">
+      <h2>📤 Datos Exfiltrados</h2>
+      <div id="exfil-list" class="loading pulse">Cargando...</div>
+    </div>
+
+    <div class="section">
+      <h2>🔀 Redirecciones Rastreadas</h2>
+      <div id="redirect-list" class="loading pulse">Cargando...</div>
+    </div>
+  </div>
+
+  <script>
+    async function loadData() {
+      try {
+        const response = await fetch('/api/attacker/dashboard');
+        const { summary, data } = await response.json();
+
+        // Update stats
+        document.getElementById('cookie-count').textContent = summary.totalCookies;
+        document.getElementById('exfil-count').textContent = summary.totalExfiltrations;
+        document.getElementById('redirect-count').textContent = summary.totalRedirects;
+
+        // Display cookies
+        const cookiesList = document.getElementById('cookies-list');
+        if (data.cookies.length === 0) {
+          cookiesList.innerHTML = '<div class="empty">No hay cookies robadas aún</div>';
+        } else {
+          cookiesList.innerHTML = data.cookies.map(item => `
+            <div class="data-item">
+              <div class="timestamp">⏰ ${new Date(item.timestamp).toLocaleString('es-CL')}</div>
+              <div><span class="label">Cookie:</span>${escapeHtml(item.cookie)}</div>
+              <div><span class="label">Referer:</span>${escapeHtml(item.referer)}</div>
+              <div class="data-content">${escapeHtml(item.cookie)}</div>
+            </div>
+          `).join('');
+        }
+
+        // Display exfiltrated data
+        const exfilList = document.getElementById('exfil-list');
+        if (data.exfiltrated.length === 0) {
+          exfilList.innerHTML = '<div class="empty">No hay datos exfiltrados aún</div>';
+        } else {
+          exfilList.innerHTML = data.exfiltrated.map(item => `
+            <div class="data-item">
+              <div class="timestamp">⏰ ${new Date(item.timestamp).toLocaleString('es-CL')}</div>
+              <div><span class="label">Referer:</span>${escapeHtml(item.referer)}</div>
+              <div class="data-content">${JSON.stringify(item.data, null, 2)}</div>
+            </div>
+          `).join('');
+        }
+
+        // Display redirects
+        const redirectList = document.getElementById('redirect-list');
+        if (data.redirects.length === 0) {
+          redirectList.innerHTML = '<div class="empty">No hay redirecciones rastreadas aún</div>';
+        } else {
+          redirectList.innerHTML = data.redirects.map(item => `
+            <div class="data-item">
+              <div class="timestamp">⏰ ${new Date(item.timestamp).toLocaleString('es-CL')}</div>
+              <div><span class="label">Referer:</span>${escapeHtml(item.referer)}</div>
+              <div><span class="label">User-Agent:</span>${escapeHtml(item.userAgent)}</div>
+            </div>
+          `).join('');
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+        alert('Error al cargar los datos del dashboard');
+      }
+    }
+
+    async function clearData() {
+      if (!confirm('¿Estás seguro de que quieres limpiar todos los datos?')) {
+        return;
+      }
+
+      try {
+        await fetch('/api/attacker/clear', { method: 'POST' });
+        loadData();
+      } catch (error) {
+        console.error('Error clearing data:', error);
+        alert('Error al limpiar los datos');
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    // Auto-refresh every 5 seconds
+    setInterval(loadData, 5000);
+
+    // Initial load
+    loadData();
+  </script>
+</body>
+
+</html>

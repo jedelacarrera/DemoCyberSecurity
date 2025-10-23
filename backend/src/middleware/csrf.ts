@@ -27,7 +27,8 @@ export const csrfProtection = async (ctx: Context, next: Next) => {
 
   const sessionId = ctx.cookies.get("sessionId");
   const providedToken =
-    (ctx.headers["x-csrf-token"] as string) || ctx.request.body?.csrfToken;
+    (ctx.headers["x-csrf-token"] as string) ||
+    (ctx.request.body as any)?.csrfToken;
 
   if (!sessionId || !providedToken) {
     ctx.status = 403;
