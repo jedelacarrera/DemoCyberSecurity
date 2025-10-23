@@ -424,6 +424,888 @@ router.post("/transfer-money",
       },
     ],
   },
+  ssrf: {
+    title: "Server-Side Request Forgery (SSRF)",
+    description:
+      "El servidor realiza peticiones HTTP a URLs controladas por el atacante",
+    category: "A10:2021 - Server-Side Request Forgery",
+    severity: "critical",
+    explanation:
+      "SSRF permite que un atacante haga que el servidor realice peticiones HTTP a URLs arbitrarias, incluyendo recursos internos (localhost, IPs privadas), servicios de metadata de cloud (169.254.169.254), o cualquier URL externa. Esto puede exponer datos sensibles, comprometer la infraestructura interna, o realizar escaneo de puertos.",
+    impact: [
+      "🔓 Acceso a servicios internos (localhost, 127.0.0.1, 192.168.x.x)",
+      "☁️ Robo de credenciales de cloud metadata (AWS, GCP, Azure)",
+      "🔍 Escaneo de puertos de la red interna",
+      "📡 Bypass de firewalls y controles de acceso",
+      "💳 Acceso a bases de datos internas o APIs privadas",
+    ],
+    vulnerableExample: `// VULNERABLE: Sin validación de URL
+// backend/routes/vulnerable/ssrf.ts
+router.post("/fetch-image", async (ctx) => {
+  const { url } = ctx.request.body;
+  
+  // VULNERABILITY: Acepta cualquier URL sin validación
+  const response = await fetch(url);
+  ctx.body = {
+    success: true,
+    message: \`Fetched content from \${url}\`,
+    status: response.status
+  };
+});
+
+// 🔴 Ataques posibles:
+// 1. Acceso a localhost:
+//    url = "http://127.0.0.1:3101/api/admin/secrets"
+//
+// 2. Metadata de AWS EC2 (credenciales IAM):
+//    url = "http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+//
+// 3. Escaneo de puertos internos:
+//    url = "http://192.168.1.50:22" (detectar SSH)
+//    url = "http://10.0.0.5:3306" (detectar MySQL)`,
+    secureExample: `// SECURE: Validación estricta de URLs
+// backend/routes/secure/ssrf.ts
+const ALLOWED_DOMAINS = ["example.com", "api.example.com"];
+
+const isPrivateIP = (hostname: string): boolean => {
+  const privateRanges = [
+    /^10\\./,                    // 10.0.0.0/8
+    /^172\\.(1[6-9]|2[0-9]|3[0-1])\\./,  // 172.16.0.0/12
+    /^192\\.168\\./,             // 192.168.0.0/16
+    /^127\\./,                   // 127.0.0.0/8 (localhost)
+    /^169\\.254\\./,             // 169.254.0.0/16 (cloud metadata)
+    /localhost/i
+  ];
+  return privateRanges.some(range => range.test(hostname));
+};
+
+router.post("/fetch-image", async (ctx) => {
+  const { url } = ctx.request.body;
+  
+  // ✅ 1. Parse y valida la URL
+  const parsedUrl = new URL(url);
+  
+  // ✅ 2. Solo HTTP/HTTPS
+  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+    ctx.body = { success: false, error: "Invalid protocol" };
+    return;
+  }
+  
+  // ✅ 3. Bloquear IPs privadas
+  if (isPrivateIP(parsedUrl.hostname)) {
+    ctx.body = { success: false, error: "Private IPs blocked" };
+    return;
+  }
+  
+  // ✅ 4. Whitelist de dominios
+  const isAllowed = ALLOWED_DOMAINS.some(domain => 
+    parsedUrl.hostname === domain || 
+    parsedUrl.hostname.endsWith(\`.\${domain}\`)
+  );
+  
+  if (!isAllowed) {
+    ctx.body = { success: false, error: "Domain not allowed" };
+    return;
+  }
+  
+  // ✅ 5. Timeout y no seguir redirects
+  const response = await fetch(url, {
+    timeout: 5000,
+    redirect: "manual"  // Previene bypass con redirects
+  });
+  
+  ctx.body = { success: true, message: "Safe fetch" };
+});`,
+    demoEndpoints: {
+      vulnerable: {
+        url: "/api/vulnerable/ssrf/fetch-image",
+        method: "POST",
+      },
+      secure: { url: "/api/secure/ssrf/fetch-image", method: "POST" },
+    },
+    testPayloads: [
+      {
+        label: "🌐 URL externa válida",
+        value: "https://httpbin.org/json",
+        type: "safe",
+      },
+      {
+        label: "🔴 Localhost (servicios internos)",
+        value: "http://127.0.0.1:3101/api/admin",
+        type: "malicious",
+      },
+      {
+        label: "☁️ AWS Metadata (credenciales IAM)",
+        value: "http://169.254.169.254/latest/meta-data/",
+        type: "malicious",
+      },
+      {
+        label: "🔴 Red interna (escaneo)",
+        value: "http://192.168.1.1/admin",
+        type: "malicious",
+      },
+      {
+        label: "🔴 File protocol (lectura de archivos)",
+        value: "file:///etc/passwd",
+        type: "malicious",
+      },
+    ],
+  },
+  "security-misconfiguration": {
+    title: "Security Misconfiguration",
+    description:
+      "Configuraciones de seguridad incorrectas o por defecto que exponen el sistema",
+    category: "A05:2021 - Security Misconfiguration",
+    severity: "high",
+    explanation:
+      "Las configuraciones incorrectas de seguridad son la vulnerabilidad más común. Incluyen: mensajes de error detallados, credenciales por defecto, debug mode en producción, listado de directorios, falta de headers de seguridad, CORS mal configurado, métodos HTTP innecesarios, y exposición de información del sistema.",
+    impact: [
+      "🔍 Exposición de información sensible del sistema",
+      "🗂️ Listado de directorios y archivos (.env, backups, etc.)",
+      "🔑 Credenciales por defecto sin cambiar (admin:admin)",
+      "🐛 Mensajes de error detallados con stack traces",
+      "🚪 Endpoints de debug accesibles en producción",
+      "🌐 Headers de seguridad faltantes (HSTS, CSP, X-Frame-Options)",
+      "🔓 CORS configurado con '*' permitiendo cualquier origen",
+    ],
+    vulnerableExample: `// VULNERABLE: Mensajes de error detallados
+// backend/routes/vulnerable/misconfiguration.ts
+router.get("/error-example", async (ctx) => {
+  try {
+    throw new Error("DB connection failed at db.internal.company.com:5432");
+  } catch (error: any) {
+    // VULNERABILITY: Exponiendo detalles internos
+    ctx.status = 500;
+    ctx.body = {
+      error: error.message,
+      stack: error.stack,           // 🔴 Stack trace completo
+      config: {
+        dbHost: "db.internal.company.com",  // 🔴 Hosts internos
+        dbPort: 5432
+      }
+    };
+  }
+});
+
+// 🔴 Credenciales por defecto
+router.post("/admin-login", async (ctx) => {
+  const { username, password } = ctx.request.body;
+  
+  // VULNERABILITY: Credenciales por defecto sin cambiar
+  if (username === "admin" && password === "admin") {
+    ctx.body = { success: true, message: "Admin access granted" };
+  }
+});
+
+// 🔴 Debug endpoint en producción
+router.get("/debug-info", async (ctx) => {
+  // VULNERABILITY: Exponiendo todas las variables de entorno
+  ctx.body = {
+    env: process.env,          // 🔴 JWT_SECRET, DB_PASSWORD, API_KEYS
+    platform: process.platform,
+    cwd: process.cwd(),
+    memoryUsage: process.memoryUsage()
+  };
+});
+
+// 🔴 CORS mal configurado
+router.get("/api/data", async (ctx) => {
+  // VULNERABILITY: Permitir cualquier origen con credenciales
+  ctx.set("Access-Control-Allow-Origin", "*");
+  ctx.set("Access-Control-Allow-Credentials", "true");
+  ctx.body = { sensitive: "data" };
+});`,
+    secureExample: `// SECURE: Mensajes de error genéricos
+// backend/routes/secure/misconfiguration.ts
+router.get("/error-example", async (ctx) => {
+  try {
+    throw new Error("Database error");
+  } catch (error: any) {
+    // ✅ Log detallado solo en servidor
+    console.error("Error details (server-side only):", error);
+    
+    // ✅ Mensaje genérico al cliente
+    ctx.status = 500;
+    ctx.body = {
+      error: "An internal error occurred. Please try again later.",
+      errorId: Date.now()  // ID para soporte, sin detalles sensibles
+    };
+  }
+});
+
+// ✅ Sin credenciales por defecto
+router.post("/admin-login", async (ctx) => {
+  // ✅ Usar bcrypt + JWT + rate limiting
+  // ✅ Forzar cambio de contraseña inicial
+  // ✅ Políticas de contraseña fuerte
+  
+  ctx.status = 401;
+  ctx.body = { error: "Invalid credentials" };
+});
+
+// ✅ Debug deshabilitado en producción
+router.get("/debug-info", async (ctx) => {
+  if (config.env === "production") {
+    ctx.status = 404;
+    ctx.body = { error: "Not found" };
+    return;
+  }
+  
+  // Incluso en dev, limitar información
+  ctx.body = {
+    environment: config.env,
+    uptime: process.uptime()
+    // Sin env vars, sin rutas de archivos
+  };
+});
+
+// ✅ Headers de seguridad completos
+app.use(async (ctx, next) => {
+  ctx.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  ctx.set("X-Content-Type-Options", "nosniff");
+  ctx.set("X-Frame-Options", "DENY");
+  ctx.set("X-XSS-Protection", "1; mode=block");
+  ctx.set("Content-Security-Policy", "default-src 'self'");
+  ctx.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  await next();
+});
+
+// ✅ CORS con whitelist
+const ALLOWED_ORIGINS = ["https://example.com", "https://app.example.com"];
+
+router.get("/api/data", async (ctx) => {
+  const origin = ctx.get("Origin");
+  
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    ctx.set("Access-Control-Allow-Origin", origin);
+    ctx.set("Access-Control-Allow-Credentials", "true");
+  }
+  
+  ctx.body = { data: "secure" };
+});`,
+    demoEndpoints: {
+      vulnerable: {
+        url: "/api/vulnerable/misconfiguration",
+        method: "GET",
+      },
+      secure: {
+        url: "/api/secure/misconfiguration",
+        method: "GET",
+      },
+    },
+    testPayloads: [
+      {
+        label: "🐛 Debug Info (expone env vars)",
+        value: "debug-info",
+        type: "malicious",
+      },
+      {
+        label: "📁 File Listing (directorios)",
+        value: "files",
+        type: "malicious",
+      },
+      {
+        label: "❌ Error Details (stack traces)",
+        value: "error-example",
+        type: "malicious",
+      },
+      {
+        label: "🔑 Admin Login (credenciales default)",
+        value: "admin-login",
+        type: "malicious",
+      },
+      {
+        label: "🌐 CORS Check",
+        value: "cors-any",
+        type: "malicious",
+      },
+      {
+        label: "📄 Security Headers Check",
+        value: "insecure-page",
+        type: "malicious",
+      },
+    ],
+  },
+  "insecure-deserialization": {
+    title: "Insecure Deserialization",
+    description:
+      "Deserialización de datos no confiables que puede llevar a ejecución de código",
+    category: "A08:2021 - Software and Data Integrity Failures",
+    severity: "critical",
+    explanation:
+      "La deserialización insegura ocurre cuando una aplicación deserializa (convierte de formato serializado a objeto) datos controlados por el atacante sin validación adecuada. Esto puede llevar a Remote Code Execution (RCE), manipulación de objetos, privilege escalation, o ataques de lógica de negocio. Es especialmente peligrosa porque permite ejecutar código arbitrario en el servidor.",
+    impact: [
+      "💥 Remote Code Execution (RCE) - ejecutar comandos en el servidor",
+      "🎭 Object Injection - modificar propiedades de objetos (ej: role: 'admin')",
+      "🔐 Privilege Escalation - elevar privilegios de usuario",
+      "🗃️ SQL Injection indirecto vía objetos deserializados",
+      "🔓 Bypass de autenticación con sesiones falsificadas",
+      "💣 Denial of Service (DoS) con payloads maliciosos",
+    ],
+    vulnerableExample: `// VULNERABLE: Deserialización sin validación
+// backend/routes/vulnerable/deserialization.ts
+
+// 🔴 Ejemplo 1: Deserializar datos sin validación
+router.post("/parse-data", async (ctx) => {
+  const { data } = ctx.request.body;
+  
+  // VULNERABILITY: Confiar en datos deserializados
+  const parsed = JSON.parse(data);
+  
+  // Usar directamente sin validar estructura
+  ctx.body = { success: true, data: parsed };
+});
+
+// 🔴 Ejemplo 2: Sesiones sin firma criptográfica
+router.post("/load-session", async (ctx) => {
+  const { sessionData } = ctx.request.body;
+  
+  // VULNERABILITY: Aceptar sesiones sin verificar integridad
+  const session = JSON.parse(
+    Buffer.from(sessionData, "base64").toString()
+  );
+  
+  // Confiar en datos del cliente
+  ctx.state.user = session.user;  // 🔴 Puede ser falsificado
+  ctx.body = { success: true, user: session.user };
+});
+
+// 🔴 Ataque: Falsificar sesión de admin
+// 1. Crear objeto malicioso:
+const fakeSession = {
+  user: {
+    id: 1,
+    username: "hacker",
+    role: "admin"  // 🔴 Elevación de privilegios
+  }
+};
+
+// 2. Serializarlo y enviarlo:
+const sessionData = Buffer.from(
+  JSON.stringify(fakeSession)
+).toString("base64");
+
+// 3. Servidor lo acepta sin verificar
+// → Ahora eres admin sin autenticación
+
+// 🔴 Ejemplo 3: Deserialización con eval (EXTREMADAMENTE PELIGROSO)
+router.post("/eval-data", async (ctx) => {
+  const { code } = ctx.request.body;
+  
+  // VULNERABILITY: eval permite ejecutar código arbitrario
+  const result = eval(code);  // 🔴 RCE directo
+  ctx.body = { result };
+});
+
+// Ataque:
+// code = "require('child_process').execSync('rm -rf /')"
+// → Ejecuta comando destructivo en el servidor`,
+    secureExample: `// SECURE: Deserialización con validación estricta
+// backend/routes/secure/deserialization.ts
+
+// ✅ Ejemplo 1: Validación de schema
+router.post("/parse-data", async (ctx) => {
+  const { data } = ctx.request.body;
+  
+  try {
+    const parsed = JSON.parse(data);
+    
+    // ✅ Validar tipo y estructura
+    if (typeof parsed !== "object" || parsed === null) {
+      ctx.status = 400;
+      ctx.body = { error: "Invalid data structure" };
+      return;
+    }
+    
+    // ✅ Whitelist de campos permitidos
+    const allowedFields = ["name", "value", "type"];
+    const validData: Record<string, any> = {};
+    
+    for (const field of allowedFields) {
+      if (field in parsed) {
+        validData[field] = parsed[field];
+      }
+    }
+    
+    ctx.body = { success: true, data: validData };
+  } catch (error) {
+    ctx.status = 400;
+    ctx.body = { error: "Invalid JSON" };
+  }
+});
+
+// ✅ Ejemplo 2: Sesiones con firma HMAC
+import crypto from "crypto";
+
+router.post("/load-session", async (ctx) => {
+  const { sessionData, signature } = ctx.request.body;
+  
+  // ✅ Verificar firma HMAC antes de confiar en los datos
+  const hmac = crypto.createHmac("sha256", SECRET_KEY);
+  hmac.update(sessionData);
+  const expectedSignature = hmac.digest("hex");
+  
+  if (signature !== expectedSignature) {
+    ctx.status = 403;
+    ctx.body = { error: "Invalid session signature" };
+    return;
+  }
+  
+  // Ahora seguro deserializar
+  const session = JSON.parse(
+    Buffer.from(sessionData, "base64").toString()
+  );
+  
+  // ✅ Validar estructura y expiración
+  if (!session.user?.id || !session.expiresAt) {
+    ctx.status = 400;
+    ctx.body = { error: "Invalid session structure" };
+    return;
+  }
+  
+  if (new Date(session.expiresAt) < new Date()) {
+    ctx.status = 401;
+    ctx.body = { error: "Session expired" };
+    return;
+  }
+  
+  ctx.body = { success: true, user: session.user };
+});
+
+// ✅ Ejemplo 3: Validación de tipos con schema
+const ALLOWED_TYPES = ["query", "command", "event"];
+const ALLOWED_ACTIONS = ["create", "read", "update", "delete"];
+
+router.post("/process-object", async (ctx) => {
+  const { serializedObj } = ctx.request.body;
+  
+  const obj = JSON.parse(serializedObj);
+  
+  // ✅ Validar tipo contra whitelist
+  if (!obj.type || !ALLOWED_TYPES.includes(obj.type)) {
+    ctx.status = 400;
+    ctx.body = { error: "Invalid object type" };
+    return;
+  }
+  
+  // ✅ Validar acción contra whitelist
+  if (!obj.action || !ALLOWED_ACTIONS.includes(obj.action)) {
+    ctx.status = 400;
+    ctx.body = { error: "Invalid action" };
+    return;
+  }
+  
+  ctx.body = { success: true, result: obj };
+});`,
+    demoEndpoints: {
+      vulnerable: {
+        url: "/api/vulnerable/deserialization/load-session",
+        method: "POST",
+      },
+      secure: {
+        url: "/api/secure/deserialization/load-session",
+        method: "POST",
+      },
+    },
+    testPayloads: [
+      {
+        label: "👤 Sesión válida (user normal)",
+        value: "normal-session",
+        type: "safe",
+      },
+      {
+        label: "👑 Sesión falsificada (role: admin)",
+        value: "admin-session",
+        type: "malicious",
+      },
+      {
+        label: "💰 Sesión con balance modificado",
+        value: "balance-session",
+        type: "malicious",
+      },
+      {
+        label: "🔑 Sesión con permisos elevados",
+        value: "elevated-session",
+        type: "malicious",
+      },
+    ],
+  },
+  "rate-limiting": {
+    title: "Missing Rate Limiting",
+    description:
+      "Ausencia de límites en la frecuencia de peticiones, permitiendo abusos y DoS",
+    category: "A04:2021 - Insecure Design",
+    severity: "medium",
+    explanation:
+      "Rate Limiting limita la cantidad de peticiones que un usuario puede hacer en un período de tiempo. Sin rate limiting, un atacante puede: hacer brute force de passwords, scrapear toda tu base de datos, causar DoS consumiendo recursos del servidor, enviar spam masivo, o abusar de APIs costosas. Es una defensa esencial contra automatización maliciosa.",
+    impact: [
+      "🔐 Brute Force Attacks - probar millones de passwords",
+      "🕷️ Web Scraping - extraer toda la base de datos",
+      "💥 Denial of Service (DoS) - saturar el servidor",
+      "📧 Email Bombing - enviar miles de emails",
+      "💸 API Abuse - consumir recursos costosos (AWS, Stripe, etc.)",
+      "🤖 Bot Attacks - automatización sin restricciones",
+    ],
+    vulnerableExample: `// VULNERABLE: Sin Rate Limiting
+// backend/routes/vulnerable/rateLimiting.ts
+
+// 🔴 Login sin límite → Brute Force
+router.post("/login", async (ctx) => {
+  const { username, password } = ctx.request.body;
+  
+  // VULNERABILITY: Permite intentos ilimitados
+  const user = await User.findOne({ where: { username } });
+  
+  if (user && await user.validatePassword(password)) {
+    ctx.body = { success: true, message: "Login successful" };
+  } else {
+    ctx.status = 401;
+    ctx.body = { error: "Invalid credentials" };
+  }
+});
+
+// Ataque:
+// for (let i = 0; i < 1000000; i++) {
+//   await fetch("/api/vulnerable/rate-limiting/login", {
+//     method: "POST",
+//     body: JSON.stringify({ username: "admin", password: passwords[i] })
+//   });
+// }
+// → Puede probar 1 millón de passwords sin restricción
+
+// 🔴 Operación costosa sin límite → DoS
+router.post("/heavy-computation", async (ctx) => {
+  const { iterations } = ctx.request.body;
+  
+  // VULNERABILITY: Acepta cualquier valor
+  let result = 0;
+  for (let i = 0; i < iterations; i++) {
+    result += Math.sqrt(i);
+  }
+  
+  ctx.body = { success: true, result };
+});
+
+// Ataque:
+// fetch("/api/vulnerable/rate-limiting/heavy-computation", {
+//   method: "POST",
+//   body: JSON.stringify({ iterations: 999999999 })
+// });
+// → Consume CPU del servidor indefinidamente
+
+// 🔴 API sin límite → Scraping
+router.get("/data", async (ctx) => {
+  // VULNERABILITY: Llamadas ilimitadas
+  const users = await User.findAll({ limit: 100 });
+  ctx.body = { success: true, data: users };
+});
+
+// Ataque:
+// for (let page = 0; page < 10000; page++) {
+//   const data = await fetch(\`/api/vulnerable/rate-limiting/data?page=\${page}\`);
+//   allData.push(...data);
+// }
+// → Descarga toda la base de datos`,
+    secureExample: `// SECURE: Con Rate Limiting
+// backend/routes/secure/rateLimiting.ts
+import rateLimit from "koa-ratelimit";
+import Redis from "ioredis";
+
+const redis = new Redis();
+
+// ✅ Rate Limiter para login (más estricto)
+const loginRateLimiter = rateLimit({
+  driver: "redis",
+  db: redis,
+  duration: 5 * 60 * 1000,  // 5 minutos
+  max: 5,                    // Máximo 5 intentos
+  errorMessage: "Too many login attempts. Please try again in 5 minutes."
+});
+
+router.post("/login", loginRateLimiter, async (ctx) => {
+  const { username, password } = ctx.request.body;
+  
+  // ✅ Máximo 5 intentos por IP cada 5 minutos
+  const user = await User.findOne({ where: { username } });
+  
+  if (user && await user.validatePassword(password)) {
+    ctx.body = { success: true, message: "Login successful" };
+  } else {
+    ctx.status = 401;
+    ctx.body = { error: "Invalid credentials" };
+  }
+});
+
+// ✅ Rate Limiter estricto para operaciones costosas
+const strictRateLimiter = rateLimit({
+  driver: "redis",
+  db: redis,
+  duration: 60 * 1000,  // 1 minuto
+  max: 10,              // Máximo 10 peticiones
+  errorMessage: "Too many requests. Please slow down."
+});
+
+router.post("/heavy-computation", strictRateLimiter, async (ctx) => {
+  const { iterations } = ctx.request.body;
+  
+  // ✅ Rate limited + input validation
+  const maxIterations = 100000;
+  const safeIterations = Math.min(iterations || 1000, maxIterations);
+  
+  let result = 0;
+  for (let i = 0; i < safeIterations; i++) {
+    result += Math.sqrt(i);
+  }
+  
+  ctx.body = { success: true, result, iterations: safeIterations };
+});
+
+// ✅ Rate Limiter general para APIs
+const generalRateLimiter = rateLimit({
+  driver: "redis",
+  db: redis,
+  duration: 60 * 1000,  // 1 minuto
+  max: 100,             // Máximo 100 peticiones
+  errorMessage: "Rate limit exceeded"
+});
+
+router.get("/data", generalRateLimiter, async (ctx) => {
+  // ✅ Máximo 100 peticiones por minuto por IP
+  const users = await User.findAll({ 
+    limit: 20,  // Limitar resultados por página
+    attributes: ["id", "username"]  // Solo campos públicos
+  });
+  
+  ctx.body = { success: true, data: users };
+});`,
+    demoEndpoints: {
+      vulnerable: {
+        url: "/api/vulnerable/rate-limiting/login",
+        method: "POST",
+      },
+      secure: {
+        url: "/api/secure/rate-limiting/login",
+        method: "POST",
+      },
+    },
+    testPayloads: [
+      {
+        label: "🔐 Login intento #1",
+        value: "admin:Test1234",
+        type: "safe",
+      },
+      {
+        label: "🔐 Login intento #2",
+        value: "admin:Test5678",
+        type: "safe",
+      },
+      {
+        label: "🔐 Login intento #3",
+        value: "admin:Test9012",
+        type: "safe",
+      },
+      {
+        label: "🔴 Intento #6+ (debería bloquearse en modo seguro)",
+        value: "admin:Wrong123",
+        type: "malicious",
+      },
+    ],
+  },
+  "secrets-exposure": {
+    title: "Secrets Exposure",
+    description:
+      "Exposición de credenciales, API keys, y secretos en código, logs, o respuestas",
+    category: "A05:2021 - Security Misconfiguration",
+    severity: "critical",
+    explanation:
+      "La exposición de secretos ocurre cuando credenciales, API keys, tokens, o cualquier información sensible se expone en código fuente, logs, mensajes de error, respuestas HTTP, o repositorios de git. Esto permite a atacantes obtener acceso completo a sistemas, bases de datos, servicios externos, o cuentas de usuarios. Es una de las vías más comunes de compromiso.",
+    impact: [
+      "🔑 Acceso a bases de datos con credenciales expuestas",
+      "💳 Uso de API keys de terceros (AWS, Stripe, OpenAI) → facturas enormes",
+      "🗂️ Acceso a repositorios privados (GitHub, GitLab)",
+      "📧 Envío de emails masivos con credenciales SMTP",
+      "🔓 Bypass de autenticación con JWT secrets expuestos",
+      "☁️ Compromiso completo de infraestructura cloud",
+    ],
+    vulnerableExample: `// VULNERABLE: Secretos hardcodeados
+// backend/routes/vulnerable/secrets.ts
+
+// 🔴 Hardcoded en código
+const DB_PASSWORD = "SuperSecret123!";
+const API_KEY = "sk_live_1234567890abcdef";
+const JWT_SECRET = "my-super-secret-key";
+
+// 🔴 Exposición en respuesta HTTP
+router.get("/config", async (ctx) => {
+  ctx.body = {
+    database: {
+      password: DB_PASSWORD,  // 🔴 CRÍTICO
+    },
+    apiKeys: {
+      stripe: API_KEY,        // 🔴 CRÍTICO
+    },
+    jwtSecret: JWT_SECRET     // 🔴 CRÍTICO
+  };
+});
+
+// 🔴 Logging de credenciales
+router.post("/connect-database", async (ctx) => {
+  const { username, password } = ctx.request.body;
+  
+  // VULNERABILITY: Logs visibles en servidor
+  console.log(\`Connecting with: \${username}:\${password}\`);
+  
+  ctx.body = { credentials: { username, password } };
+});
+
+// 🔴 Secretos en mensajes de error
+router.get("/api-call", async (ctx) => {
+  try {
+    throw new Error(\`API failed with key: \${API_KEY}\`);
+  } catch (error) {
+    ctx.body = { error: error.message };  // 🔴 Secret expuesto
+  }
+});
+
+// 🔴 Secretos en git
+// .env file (COMMITED TO GIT)
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCY
+DATABASE_URL=postgresql://user:password@localhost:5432/db
+
+// 🔴 Secretos enviados al cliente
+router.get("/client-config", async (ctx) => {
+  ctx.body = {
+    apiKey: API_KEY,           // 🔴 Visible en DevTools
+    encryptionKey: "secret123" // 🔴 Cualquiera puede verlo
+  };
+});`,
+    secureExample: `// SECURE: Gestión adecuada de secretos
+// backend/routes/secure/secrets.ts
+import { config } from "../../config";  // Lee de .env
+
+// ✅ Secretos desde variables de entorno
+// .env file (NEVER COMMIT, add to .gitignore)
+// AWS_ACCESS_KEY_ID=...
+// AWS_SECRET_ACCESS_KEY=...
+// DATABASE_URL=...
+// JWT_SECRET=...
+
+// ✅ .env.example file (commit this)
+// AWS_ACCESS_KEY_ID=your_key_here
+// AWS_SECRET_ACCESS_KEY=your_secret_here
+// DATABASE_URL=postgresql://user:pass@host:port/db
+// JWT_SECRET=generate_strong_secret
+
+// ✅ Solo configuración pública
+router.get("/config", async (ctx) => {
+  ctx.body = {
+    database: {
+      host: config.database.host,
+      port: config.database.port,
+      // ✅ Nunca exponer password
+    },
+    apiEndpoint: "https://api.example.com",
+    // ✅ Nunca exponer API keys
+  };
+});
+
+// ✅ Nunca loggear credenciales
+router.post("/connect-database", async (ctx) => {
+  const { username, password } = ctx.request.body;
+  
+  // ✅ Solo info no sensible
+  console.log(\`Connection attempt for user: \${username}\`);
+  // ❌ NUNCA: console.log(password);
+  
+  ctx.body = { 
+    success: true,
+    // ✅ No devolver credenciales
+  };
+});
+
+// ✅ Mensajes de error genéricos
+router.get("/api-call", async (ctx) => {
+  try {
+    // API call con secretos seguros
+    const result = await externalAPI(config.apiKey);
+  } catch (error) {
+    // ✅ Log completo solo en servidor
+    logger.error("API error (server-side):", error);
+    
+    // ✅ Mensaje genérico al cliente
+    ctx.status = 500;
+    ctx.body = { 
+      error: "API call failed. Please try again.",
+      errorId: Date.now()  // Para soporte
+    };
+  }
+});
+
+// ✅ .gitignore
+/*
+.env
+.env.local
+.env.production
+*.pem
+*.key
+secrets/
+*/
+
+// ✅ Solo configuración pública al cliente
+router.get("/client-config", async (ctx) => {
+  ctx.body = {
+    apiEndpoint: "https://api.example.com",
+    // ✅ Solo public keys si es necesario
+    publicKey: "pk_public_...",  // Stripe public key (seguro)
+    // ❌ NUNCA enviar secret keys
+  };
+});
+
+// ✅ Usar servicios de gestión de secretos
+import { SecretsManager } from "@aws-sdk/client-secrets-manager";
+
+const secretsManager = new SecretsManager({ region: "us-east-1" });
+
+async function getSecret(secretName: string) {
+  const response = await secretsManager.getSecretValue({
+    SecretId: secretName
+  });
+  return JSON.parse(response.SecretString);
+}`,
+    demoEndpoints: {
+      vulnerable: {
+        url: "/api/vulnerable/secrets/config",
+        method: "GET",
+      },
+      secure: {
+        url: "/api/secure/secrets/config",
+        method: "GET",
+      },
+    },
+    testPayloads: [
+      {
+        label: "🔧 Ver configuración del servidor",
+        value: "config",
+        type: "malicious",
+      },
+      {
+        label: "🔑 Ver secretos en git",
+        value: "git-secrets",
+        type: "malicious",
+      },
+      {
+        label: "📱 Ver config del cliente",
+        value: "client-config",
+        type: "malicious",
+      },
+      {
+        label: "❌ Ver error con secretos",
+        value: "api-call",
+        type: "malicious",
+      },
+    ],
+  },
   "authentication-failures": {
     title: "Authentication Failures",
     description:
@@ -676,8 +1558,13 @@ export default function VulnerabilityPage() {
           ? vuln.demoEndpoints.vulnerable
           : vuln.demoEndpoints.secure;
 
-      const method = endpointConfig.method || "GET";
+      let method = endpointConfig.method || "GET";
       let url = endpointConfig.url;
+
+      // Security Misconfiguration: admin-login requiere POST
+      if (id === "security-misconfiguration" && input === "admin-login") {
+        method = "POST";
+      }
 
       let response;
 
@@ -685,6 +1572,17 @@ export default function VulnerabilityPage() {
         // Para Broken Access Control, agregar el ID directamente a la URL
         if (id === "broken-access-control") {
           url = `${url}/${input}`;
+          response = await apiClient.call("GET", url, {});
+        }
+        // Para Security Misconfiguration, el input es el nombre del endpoint
+        else if (id === "security-misconfiguration") {
+          url = `${url}/${input}`;
+          response = await apiClient.call("GET", url, {});
+        }
+        // Para Secrets Exposure, el input es el nombre del endpoint
+        else if (id === "secrets-exposure") {
+          const baseUrl = url.substring(0, url.lastIndexOf("/"));
+          url = `${baseUrl}/${input}`;
           response = await apiClient.call("GET", url, {});
         } else {
           // Para otras vulnerabilidades GET, enviar como query parameter
@@ -704,8 +1602,13 @@ export default function VulnerabilityPage() {
         // Para POST, determinar formato según la vulnerabilidad
         let body;
 
+        // Security Misconfiguration: admin-login usa credenciales por defecto
+        if (id === "security-misconfiguration" && input === "admin-login") {
+          url = `${url}/${input}`;
+          body = { username: "admin", password: "admin" };
+        }
         // XSS: Crear post con título y contenido
-        if (id === "xss") {
+        else if (id === "xss") {
           body = {
             title: "Demo Post",
             content: input,
@@ -730,6 +1633,63 @@ export default function VulnerabilityPage() {
         else if (id === "csrf" && input.includes(":")) {
           const [toUser, amount] = input.split(":");
           body = { toUser: toUser || "", amount: parseInt(amount) || 0 };
+        }
+        // SSRF: url
+        else if (id === "ssrf") {
+          body = { url: input };
+        }
+        // Insecure Deserialization: generar sesiones falsificadas
+        else if (id === "insecure-deserialization") {
+          let sessionObject;
+
+          if (input === "normal-session") {
+            sessionObject = {
+              user: {
+                id: 2,
+                username: "user",
+                role: "user",
+              },
+              expiresAt: new Date(Date.now() + 3600000).toISOString(),
+            };
+          } else if (input === "admin-session") {
+            sessionObject = {
+              user: {
+                id: 999,
+                username: "hacker",
+                role: "admin", // 🔴 Elevación de privilegios
+              },
+              expiresAt: new Date(Date.now() + 3600000).toISOString(),
+            };
+          } else if (input === "balance-session") {
+            sessionObject = {
+              user: {
+                id: 3,
+                username: "richuser",
+                role: "user",
+                balance: 1000000, // 🔴 Balance falsificado
+              },
+              expiresAt: new Date(Date.now() + 3600000).toISOString(),
+            };
+          } else if (input === "elevated-session") {
+            sessionObject = {
+              user: {
+                id: 4,
+                username: "poweruser",
+                role: "user",
+                permissions: ["read", "write", "delete", "admin"], // 🔴 Permisos elevados
+              },
+              expiresAt: new Date(Date.now() + 3600000).toISOString(),
+            };
+          }
+
+          // Serializar a base64
+          const sessionData = btoa(JSON.stringify(sessionObject));
+          body = { sessionData };
+        }
+        // Rate Limiting: username:password para login
+        else if (id === "rate-limiting" && input.includes(":")) {
+          const [username, password] = input.split(":");
+          body = { username: username || "", password: password || "" };
         }
         // Otros POST que usan formato param1:param2
         else if (input.includes(":")) {
@@ -961,11 +1921,11 @@ export default function VulnerabilityPage() {
                     <p className="text-xs text-green-800">
                       <strong>✅ Token JWT Detectado en Cookie:</strong> Estás
                       autenticado y puedes usar los endpoints CSRF. <br />
-                      <strong>🍪 CSRF y Cookies:</strong> El token se guardó en una
-                      cookie que el navegador enviará AUTOMÁTICAMENTE en cada
-                      petición. Esto permite el ataque CSRF porque un sitio malicioso
-                      puede hacer que tu navegador envíe peticiones con tu sesión.{" "}
-                      <br />
+                      <strong>🍪 CSRF y Cookies:</strong> El token se guardó en
+                      una cookie que el navegador enviará AUTOMÁTICAMENTE en
+                      cada petición. Esto permite el ataque CSRF porque un sitio
+                      malicioso puede hacer que tu navegador envíe peticiones
+                      con tu sesión. <br />
                       <strong>Formato:</strong> Usa{" "}
                       <code className="bg-green-100 px-1 rounded">
                         usuario:monto
@@ -1001,11 +1961,11 @@ export default function VulnerabilityPage() {
                         admin:admin123
                       </code>
                       ). <br />
-                      <strong>🍪 ¿Por qué Cookie?</strong> El token se guardará en
-                      una <strong>cookie</strong> que el navegador enviará
-                      automáticamente. Esto es NECESARIO para CSRF porque el ataque
-                      funciona cuando el navegador envía credenciales sin que el
-                      usuario lo sepa. <br />
+                      <strong>🍪 ¿Por qué Cookie?</strong> El token se guardará
+                      en una <strong>cookie</strong> que el navegador enviará
+                      automáticamente. Esto es NECESARIO para CSRF porque el
+                      ataque funciona cuando el navegador envía credenciales sin
+                      que el usuario lo sepa. <br />
                       <strong>Formato después del login:</strong> Usa{" "}
                       <code className="bg-orange-100 px-1 rounded">
                         usuario:monto

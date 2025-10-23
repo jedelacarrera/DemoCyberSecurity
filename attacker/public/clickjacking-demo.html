@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎯 Clickjacking Demo - Sitio Atacante</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 2.5em;
+    }
+
+    .header p {
+      color: #666;
+      font-size: 1.1em;
+      line-height: 1.6;
+    }
+
+    .warning {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+    }
+
+    .warning h3 {
+      color: #856404;
+      margin-bottom: 10px;
+    }
+
+    .warning p {
+      color: #856404;
+      line-height: 1.6;
+    }
+
+    .demo-section {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      margin-bottom: 30px;
+    }
+
+    .demo-section h2 {
+      color: #333;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 3px solid #667eea;
+    }
+
+    .demo-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .tab-button {
+      flex: 1;
+      padding: 15px 30px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: #f0f0f0;
+      color: #666;
+    }
+
+    .tab-button.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .tab-button:hover:not(.active) {
+      background: #e0e0e0;
+    }
+
+    .demo-content {
+      display: none;
+    }
+
+    .demo-content.active {
+      display: block;
+    }
+
+    .iframe-container {
+      position: relative;
+      border: 3px solid #667eea;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #f9f9f9;
+      margin-bottom: 20px;
+    }
+
+    .iframe-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 0, 0, 0.1);
+      pointer-events: none;
+      z-index: 10;
+      border: 2px dashed red;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .iframe-overlay-text {
+      background: rgba(255, 0, 0, 0.9);
+      color: white;
+      padding: 20px 40px;
+      border-radius: 10px;
+      font-size: 24px;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+      display: block;
+    }
+
+    .clickjacking-demo {
+      position: relative;
+      height: 400px;
+      border: 3px solid #dc3545;
+      border-radius: 10px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+    }
+
+    .fake-button {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      color: white;
+      padding: 30px 60px;
+      font-size: 24px;
+      font-weight: bold;
+      border: none;
+      border-radius: 15px;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      transition: transform 0.2s;
+      z-index: 1;
+    }
+
+    .fake-button:hover {
+      transform: translate(-50%, -50%) scale(1.05);
+    }
+
+    .invisible-iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.01;
+      z-index: 2;
+      cursor: pointer;
+    }
+
+    .explanation {
+      background: #e8f4f8;
+      border-left: 4px solid #17a2b8;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .explanation h4 {
+      color: #17a2b8;
+      margin-bottom: 10px;
+    }
+
+    .explanation p {
+      color: #333;
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+
+    .explanation code {
+      background: white;
+      padding: 2px 6px;
+      border-radius: 3px;
+      color: #d63384;
+      font-family: "Courier New", monospace;
+    }
+
+    .log-container {
+      background: #1e1e1e;
+      color: #00ff00;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: "Courier New", monospace;
+      font-size: 14px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+
+    .log-entry {
+      margin-bottom: 5px;
+      padding: 5px;
+      border-left: 3px solid #00ff00;
+      padding-left: 10px;
+    }
+
+    .log-entry.error {
+      color: #ff6b6b;
+      border-left-color: #ff6b6b;
+    }
+
+    .log-entry.success {
+      color: #51cf66;
+      border-left-color: #51cf66;
+    }
+
+    .log-entry.info {
+      color: #74c0fc;
+      border-left-color: #74c0fc;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .control-button {
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: #667eea;
+      color: white;
+    }
+
+    .control-button:hover {
+      background: #764ba2;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .control-button.danger {
+      background: #dc3545;
+    }
+
+    .control-button.danger:hover {
+      background: #c82333;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-indicator.vulnerable {
+      background: #dc3545;
+      box-shadow: 0 0 10px #dc3545;
+    }
+
+    .status-indicator.secure {
+      background: #28a745;
+      box-shadow: 0 0 10px #28a745;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .pulsing {
+      animation: pulse 2s infinite;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>🎯 Clickjacking Attack Demo</h1>
+      <p>
+        Demostración de cómo un atacante puede embedir tu sitio en un iframe y
+        engañar a usuarios para que hagan clic en elementos invisibles
+      </p>
+    </div>
+
+    <!-- Warning -->
+    <div class="warning">
+      <h3>⚠️ ¿Qué es Clickjacking?</h3>
+      <p>
+        <strong>Clickjacking</strong> (también conocido como UI Redressing) es
+        un ataque donde un atacante engaña a un usuario para que haga clic en
+        algo diferente de lo que el usuario percibe. El atacante carga tu
+        sitio en un iframe invisible sobre un botón atractivo.
+      </p>
+      <p style="margin-top: 10px">
+        <strong>Protección:</strong> Los headers
+        <code>X-Frame-Options: DENY</code> y
+        <code>Content-Security-Policy: frame-ancestors 'none'</code> previenen
+        que tu sitio sea embebido en iframes.
+      </p>
+    </div>
+
+    <!-- Demo Tabs -->
+    <div class="demo-section">
+      <h2>Demos Interactivas</h2>
+
+      <div class="demo-tabs">
+        <button class="tab-button active" onclick="showTab('basic')">
+          📺 Iframe Básico
+        </button>
+        <button class="tab-button" onclick="showTab('clickjacking')">
+          🎯 Clickjacking Attack
+        </button>
+        <button class="tab-button" onclick="showTab('protected')">
+          🛡️ Sitio Protegido
+        </button>
+      </div>
+
+      <!-- Tab 1: Basic Iframe -->
+      <div id="basic" class="demo-content active">
+        <div class="explanation">
+          <h4>📺 Embedding Básico</h4>
+          <p>
+            Un sitio <strong>vulnerable</strong> (sin
+            <code>X-Frame-Options</code>) puede ser embebido en un iframe. El
+            atacante puede mostrar tu sitio dentro del suyo.
+          </p>
+        </div>
+
+        <div class="controls">
+          <button class="control-button" onclick="loadVulnerableIframe()">
+            🔴 Cargar Sitio Vulnerable
+          </button>
+          <button class="control-button" onclick="loadSecureIframe()">
+            🛡️ Intentar Cargar Sitio Seguro
+          </button>
+          <button class="control-button danger" onclick="clearIframe()">
+            🗑️ Limpiar
+          </button>
+        </div>
+
+        <div class="iframe-container">
+          <div class="iframe-overlay">
+            <div class="iframe-overlay-text pulsing">
+              ⬇️ Tu sitio embebido en el sitio del atacante ⬇️
+            </div>
+          </div>
+          <iframe id="basic-iframe" src="about:blank" sandbox="allow-same-origin allow-scripts allow-forms"></iframe>
+        </div>
+
+        <div class="log-container" id="basic-log">
+          <div class="log-entry info">
+            💡 Haz clic en los botones arriba para cargar diferentes URLs
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Clickjacking Attack -->
+      <div id="clickjacking" class="demo-content">
+        <div class="explanation">
+          <h4>🎯 Ataque de Clickjacking</h4>
+          <p>
+            El atacante coloca un <strong>iframe invisible</strong> sobre un
+            botón atractivo. Cuando el usuario cree que está haciendo clic en
+            "¡Gana $1000!", en realidad está haciendo clic en un botón dentro
+            del iframe (ej: "Transferir todo mi dinero").
+          </p>
+          <p>
+            <strong>Técnica:</strong>
+            <code>opacity: 0.01;</code> hace el iframe casi invisible, pero
+            sigue capturando clicks.
+          </p>
+        </div>
+
+        <div class="controls">
+          <button class="control-button" onclick="enableClickjacking()">
+            🎯 Activar Clickjacking
+          </button>
+          <button class="control-button" onclick="showIframe()">
+            👁️ Revelar iframe Oculto
+          </button>
+          <button class="control-button danger" onclick="resetClickjacking()">
+            🔄 Resetear
+          </button>
+        </div>
+
+        <div class="clickjacking-demo" id="clickjacking-demo">
+          <button class="fake-button">🎉 ¡Gana $1000 GRATIS! 🎉</button>
+          <iframe id="clickjacking-iframe" src="about:blank" class="invisible-iframe" style="display: none"></iframe>
+        </div>
+
+        <div class="log-container" id="clickjacking-log">
+          <div class="log-entry info">
+            💡 Haz clic en "Activar Clickjacking" y luego intenta hacer clic
+            en el botón verde
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Protected Site -->
+      <div id="protected" class="demo-content">
+        <div class="explanation">
+          <h4>🛡️ Sitio Protegido con X-Frame-Options</h4>
+          <p>
+            Un sitio <strong>seguro</strong> envía el header
+            <code>X-Frame-Options: DENY</code> que le dice al navegador:
+            "No permitas que este sitio sea embebido en ningún iframe".
+          </p>
+          <p>
+            Cuando intentas cargar el sitio protegido en un iframe, el
+            navegador lo bloquea automáticamente y muestra un error.
+          </p>
+        </div>
+
+        <div class="controls">
+          <button class="control-button" onclick="attemptLoadProtectedSite()">
+            🔒 Intentar Cargar Sitio Protegido
+          </button>
+          <button class="control-button" onclick="checkHeaders()">
+            📋 Ver Headers de Seguridad
+          </button>
+        </div>
+
+        <div class="iframe-container">
+          <iframe id="protected-iframe" src="about:blank" sandbox="allow-same-origin allow-scripts"></iframe>
+        </div>
+
+        <div class="log-container" id="protected-log">
+          <div class="log-entry success">
+            ✅ Este iframe intentará cargar el sitio seguro, pero será
+            bloqueado por el navegador
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Educational Section -->
+    <div class="demo-section">
+      <h2>📚 Cómo Protegerse</h2>
+
+      <div class="explanation">
+        <h4>1. Usar X-Frame-Options Header</h4>
+        <p>
+          <code>X-Frame-Options: DENY</code> - Nunca permitir iframes<br />
+          <code>X-Frame-Options: SAMEORIGIN</code> - Solo tu propio dominio<br />
+          <code>X-Frame-Options: ALLOW-FROM https://trusted.com</code> -
+          Dominios específicos (deprecado)
+        </p>
+      </div>
+
+      <div class="explanation">
+        <h4>2. Usar Content-Security-Policy (Recomendado)</h4>
+        <p>
+          <code>Content-Security-Policy: frame-ancestors 'none';</code> - Más
+          moderno y flexible<br />
+          <code>Content-Security-Policy: frame-ancestors 'self';</code> -
+          Solo tu dominio<br />
+          <code>Content-Security-Policy: frame-ancestors 'self'
+              https://trusted.com;</code>
+          - Dominios específicos
+        </p>
+      </div>
+
+      <div class="explanation">
+        <h4>3. Implementación en Backend (Koa.js)</h4>
+        <p>
+          <code style="display: block; white-space: pre; margin-top: 10px">app.use(async (ctx, next) => {
+  ctx.set('X-Frame-Options', 'DENY');
+  ctx.set('Content-Security-Policy', "frame-ancestors 'none'");
+  await next();
+});</code>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const FRONTEND_URL = "http://localhost:3100";
+    const BACKEND_URL = "http://localhost:3101";
+
+    // Tab Management
+    function showTab(tabName) {
+      // Hide all tabs
+      document.querySelectorAll(".demo-content").forEach((tab) => {
+        tab.classList.remove("active");
+      });
+      document.querySelectorAll(".tab-button").forEach((btn) => {
+        btn.classList.remove("active");
+      });
+
+      // Show selected tab
+      document.getElementById(tabName).classList.add("active");
+      event.target.classList.add("active");
+    }
+
+    // Basic Iframe Demo
+    function loadVulnerableIframe() {
+      const iframe = document.getElementById("basic-iframe");
+      const log = document.getElementById("basic-log");
+
+      addLog(
+        log,
+        "info",
+        "📡 Cargando endpoint vulnerable (sin X-Frame-Options)..."
+      );
+
+      // Intentar cargar un endpoint vulnerable del backend
+      iframe.src = `${BACKEND_URL}/api/vulnerable/misconfiguration/insecure-page`;
+
+      iframe.onload = () => {
+        addLog(
+          log,
+          "error",
+          "⚠️ ¡Sitio vulnerable cargado exitosamente en iframe!"
+        );
+        addLog(log, "error", "   → El atacante puede embedir tu sitio");
+        addLog(log, "error", "   → Puede aplicar Clickjacking");
+        addLog(log, "error", "   → Falta: X-Frame-Options header");
+      };
+
+      iframe.onerror = () => {
+        addLog(log, "info", "ℹ️  Error al cargar (puede ser esperado)");
+      };
+    }
+
+    function loadSecureIframe() {
+      const iframe = document.getElementById("basic-iframe");
+      const log = document.getElementById("basic-log");
+
+      addLog(
+        log,
+        "info",
+        "📡 Intentando cargar endpoint seguro (con X-Frame-Options)..."
+      );
+
+      iframe.src = `${BACKEND_URL}/api/secure/misconfiguration/secure-page`;
+
+      setTimeout(() => {
+        addLog(log, "success", "✅ Sitio seguro BLOQUEADO por el navegador");
+        addLog(log, "success", "   → X-Frame-Options: DENY funcionando");
+        addLog(
+          log,
+          "success",
+          "   → El atacante NO puede embedir este sitio"
+        );
+        addLog(log, "info", "ℹ️  Abre DevTools → Console para ver el error");
+      }, 500);
+    }
+
+    function clearIframe() {
+      document.getElementById("basic-iframe").src = "about:blank";
+      document.getElementById("basic-log").innerHTML =
+        '<div class="log-entry info">💡 Iframe limpiado</div>';
+    }
+
+    // Clickjacking Demo
+    function enableClickjacking() {
+      const iframe = document.getElementById("clickjacking-iframe");
+      const log = document.getElementById("clickjacking-log");
+
+      addLog(log, "info", "🎯 Activando ataque de Clickjacking...");
+
+      // Cargar una página vulnerable en el iframe invisible
+      iframe.src = `${BACKEND_URL}/api/vulnerable/misconfiguration/insecure-page`;
+      iframe.style.display = "block";
+
+      addLog(log, "error", "⚠️ iframe invisible activado (opacity: 0.01)");
+      addLog(
+        log,
+        "error",
+        '   → El botón "Gana $1000" es solo una ilusión'
+      );
+      addLog(
+        log,
+        "error",
+        "   → En realidad harás clic en el iframe invisible"
+      );
+      addLog(log, "info", "💡 Haz clic en el botón verde ahora...");
+
+      // Detectar clicks en el iframe
+      iframe.onload = () => {
+        addLog(log, "success", "✅ iframe cargado y listo para capturar clicks");
+      };
+    }
+
+    function showIframe() {
+      const iframe = document.getElementById("clickjacking-iframe");
+      const log = document.getElementById("clickjacking-log");
+
+      if (iframe.src === "about:blank" || iframe.style.display === "none") {
+        addLog(
+          log,
+          "info",
+          "ℹ️  Primero activa el Clickjacking con el botón 🎯"
+        );
+        return;
+      }
+
+      iframe.style.opacity = "0.5";
+      addLog(log, "info", "👁️  iframe revelado (opacity: 0.5)");
+      addLog(
+        log,
+        "success",
+        "   → Ahora puedes ver que el iframe está sobre el botón"
+      );
+      addLog(
+        log,
+        "success",
+        "   → En un ataque real, esto sería invisible (opacity: 0.01)"
+      );
+    }
+
+    function resetClickjacking() {
+      const iframe = document.getElementById("clickjacking-iframe");
+      iframe.src = "about:blank";
+      iframe.style.display = "none";
+      iframe.style.opacity = "0.01";
+      document.getElementById("clickjacking-log").innerHTML =
+        '<div class="log-entry info">🔄 Demo reseteada</div>';
+    }
+
+    // Protected Site Demo
+    function attemptLoadProtectedSite() {
+      const iframe = document.getElementById("protected-iframe");
+      const log = document.getElementById("protected-log");
+
+      addLog(
+        log,
+        "info",
+        "🔒 Intentando cargar sitio protegido en iframe..."
+      );
+
+      iframe.src = `${BACKEND_URL}/api/secure/misconfiguration/secure-page`;
+
+      setTimeout(() => {
+        addLog(log, "success", "✅ BLOQUEADO por X-Frame-Options: DENY");
+        addLog(
+          log,
+          "success",
+          "   → El navegador rechazó cargar el sitio en el iframe"
+        );
+        addLog(
+          log,
+          "info",
+          "   → Mensaje en DevTools: 'Refused to display in a frame'"
+        );
+        addLog(
+          log,
+          "success",
+          "   → La protección está funcionando correctamente"
+        );
+      }, 500);
+    }
+
+    async function checkHeaders() {
+      const log = document.getElementById("protected-log");
+
+      addLog(log, "info", "📋 Verificando headers de seguridad...");
+
+      try {
+        const response = await fetch(
+          `${BACKEND_URL}/api/secure/misconfiguration/secure-page`
+        );
+
+        addLog(log, "success", "✅ Headers de seguridad:");
+        addLog(
+          log,
+          "success",
+          `   → X-Frame-Options: ${response.headers.get("X-Frame-Options") || "Not set"}`
+        );
+        addLog(
+          log,
+          "success",
+          `   → Content-Security-Policy: ${response.headers.get("Content-Security-Policy") || "Not set"}`
+        );
+        addLog(
+          log,
+          "success",
+          `   → X-Content-Type-Options: ${response.headers.get("X-Content-Type-Options") || "Not set"}`
+        );
+      } catch (error) {
+        addLog(log, "error", "❌ Error al verificar headers: " + error.message);
+      }
+    }
+
+    // Helper function
+    function addLog(container, type, message) {
+      const entry = document.createElement("div");
+      entry.className = `log-entry ${type}`;
+      entry.textContent = message;
+      container.appendChild(entry);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // Initialize
+    window.addEventListener("load", () => {
+      console.log("🎯 Clickjacking Demo loaded");
+      console.log("Frontend URL:", FRONTEND_URL);
+      console.log("Backend URL:", BACKEND_URL);
+    });
+  </script>
+</body>
+
+</html>

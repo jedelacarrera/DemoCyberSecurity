@@ -106,11 +106,81 @@ router.get("/secure-page", async (ctx) => {
   ctx.set("Referrer-Policy", "strict-origin-when-cross-origin");
   ctx.set("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
 
-  ctx.body = {
-    success: true,
-    html: "<html><body>Hello</body></html>",
-    note: "All security headers properly configured",
-  };
+  ctx.type = "text/html";
+  ctx.body = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Secure Banking Site</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          padding: 20px;
+          background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+          color: white;
+          text-align: center;
+        }
+        .panel {
+          background: white;
+          color: #333;
+          padding: 30px;
+          border-radius: 10px;
+          max-width: 400px;
+          margin: 50px auto;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        button {
+          background: #11998e;
+          color: white;
+          border: none;
+          padding: 15px 30px;
+          font-size: 16px;
+          border-radius: 5px;
+          cursor: pointer;
+          margin: 10px;
+          transition: all 0.3s;
+        }
+        button:hover {
+          background: #38ef7d;
+          transform: scale(1.05);
+        }
+        .danger {
+          background: #f44336;
+        }
+        .danger:hover {
+          background: #d32f2f;
+        }
+        .balance {
+          font-size: 32px;
+          font-weight: bold;
+          color: #11998e;
+          margin: 20px 0;
+        }
+        .badge {
+          display: inline-block;
+          background: #4caf50;
+          color: white;
+          padding: 5px 10px;
+          border-radius: 15px;
+          font-size: 12px;
+          margin-top: 10px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="panel">
+        <h1>🔒 Banco Seguro</h1>
+        <p>Bienvenido, <strong>Usuario</strong></p>
+        <div class="balance">$10,000.00</div>
+        <p>Balance de cuenta</p>
+        <button onclick="alert('✅ Transferencia de $100 realizada')">Transferir $100</button>
+        <button class="danger" onclick="alert('⚠️ ¡Cuenta eliminada!')">Eliminar Cuenta</button>
+        <div class="badge">✅ Protegido con X-Frame-Options: DENY</div>
+      </div>
+      <p style="margin-top: 20px; font-size: 12px;">🔒 Esta página está protegida contra Clickjacking</p>
+    </body>
+    </html>
+  `;
 });
 
 // SECURE: Proper CORS configuration
