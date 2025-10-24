@@ -48,12 +48,6 @@ Modified the following files to use the dynamic configuration:
 - Updated fetch calls to use dynamic URL
 - Added event listener to update UI when config loads
 
-#### `csrf-attack.html`
-
-- Added `<script src="config.js"></script>`
-- Updated form action and fetch calls to use `CONFIG.backendUrl`
-- Updated code examples to show dynamic URL
-
 #### `clickjacking-demo.html`
 
 - Added `<script src="config.js"></script>`

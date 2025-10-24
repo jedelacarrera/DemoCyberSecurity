@@ -69,10 +69,10 @@ echo "  3. Deploy services to Cloud Run"
 echo ""
 echo -e "${YELLOW}Estimated time: 10-15 minutes${NC}"
 echo ""
-echo -e "Continue? (y/N): "
+echo -e "Continue? (Y/n): "
 read -r CONFIRM
 
-if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
+if [ "$CONFIRM" = "n" ] || [ "$CONFIRM" = "N" ]; then
     echo "Deployment cancelled."
     exit 0
 fi
