@@ -10,7 +10,7 @@ This system runs on a different origin (port 3002) to simulate attacks that orig
 
 ### 1. CSRF (Cross-Site Request Forgery)
 
-**File:** `csrf-attack.html`
+**File:** `csrf-demo.html`
 
 Demonstrates how an attacker site can make authenticated requests on behalf of a logged-in user.
 
@@ -38,6 +38,24 @@ Demonstrates UI redressing attacks where users are tricked into clicking hidden 
 - Interactive opacity slider
 - Visual demonstration
 
+## Configuration
+
+The attacker application needs to know the backend URL to target. This is configured via the `BACKEND_URL` environment variable.
+
+### Environment Variables
+
+- `BACKEND_URL` - The URL of the backend API (default: `http://localhost:3101`)
+- `PORT` - The port to run on (default: `3002` for local, `8080` for production)
+
+### Local Development
+
+Create a `.env` file (optional):
+
+```bash
+BACKEND_URL=http://localhost:3101
+PORT=3002
+```
+
 ## Running Locally
 
 ### With npm
@@ -54,7 +72,7 @@ Runs on http://localhost:3002
 
 ```bash
 docker build -t owasp-attacker .
-docker run -p 3002:80 owasp-attacker
+docker run -p 3002:8080 -e BACKEND_URL=http://localhost:3101 owasp-attacker
 ```
 
 ### With Docker Compose
@@ -63,6 +81,14 @@ From project root:
 
 ```bash
 docker-compose up attacker
+```
+
+### Production Deployment
+
+For production (e.g., Google Cloud Run), set the environment variable:
+
+```bash
+BACKEND_URL=https://owasp-demo-backend-109079007405.us-central1.run.app
 ```
 
 ## How to Use
@@ -77,7 +103,7 @@ docker-compose up attacker
 ### CSRF Attack Flow
 
 1. User is authenticated on http://localhost:3001
-2. Attacker tricks user to visit http://localhost:3002/csrf-attack.html
+2. Attacker tricks user to visit http://localhost:3002/csrf-demo.html
 3. Page automatically sends malicious request
 4. If no CSRF protection, action executes successfully
 
@@ -117,11 +143,14 @@ docker-compose up attacker
 ```
 attacker/
 ├── public/
-│   ├── index.html           # Main dashboard
-│   ├── csrf-attack.html     # CSRF demonstration
-│   ├── iframe-xss.html      # XSS demonstration
-│   ├── clickjacking.html    # Clickjacking demonstration
-│   └── styles.css           # Shared styles
+│   ├── index.html              # Main dashboard
+│   ├── csrf-demo.html          # CSRF demonstration
+│   ├── iframe-xss.html         # XSS demonstration
+│   ├── clickjacking.html       # Clickjacking demonstration
+│   ├── clickjacking-demo.html  # Interactive clickjacking demo
+│   ├── config.js               # Configuration loader
+│   └── styles.css              # Shared styles
+├── server.js                   # Express server with config endpoint
 ├── package.json
 ├── Dockerfile
 └── README.md

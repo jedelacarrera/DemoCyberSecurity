@@ -75,6 +75,8 @@ app.use(
       }
     },
     credentials: true,
+    allowHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    exposeHeaders: ["Content-Type", "Authorization"],
   })
 );
 

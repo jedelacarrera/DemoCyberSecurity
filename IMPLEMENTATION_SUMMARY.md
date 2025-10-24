@@ -41,7 +41,7 @@ DemoCyberSecurity/
 ├── attacker/            ✅ Sistema atacante
 │   ├── public/
 │   │   ├── index.html        ✅ Dashboard
-│   │   ├── csrf-attack.html  ✅ CSRF demo
+│   │   ├── csrf-demo.html  ✅ CSRF demo
 │   │   ├── iframe-xss.html   ✅ XSS demo
 │   │   ├── clickjacking.html ✅ Clickjacking demo
 │   │   └── styles.css        ✅ Estilos

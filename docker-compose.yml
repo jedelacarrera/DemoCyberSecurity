@@ -73,8 +73,13 @@ services:
       context: ./attacker
       dockerfile: Dockerfile
     container_name: owasp-demo-attacker
+    environment:
+      PORT: 8080
+      BACKEND_URL: http://backend:3001
     ports:
-      - "3002:80"
+      - "3002:8080"
+    depends_on:
+      - backend
     networks:
       - owasp-network
 

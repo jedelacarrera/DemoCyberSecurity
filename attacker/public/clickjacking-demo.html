@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🎯 Clickjacking Demo - Sitio Atacante</title>
+  <script src="config.js"></script>
   <style>
     * {
       margin: 0;
@@ -531,8 +532,15 @@
   </div>
 
   <script>
-    const FRONTEND_URL = "http://localhost:3100";
-    const BACKEND_URL = "http://localhost:3101";
+    // Initialize URLs from config
+    let FRONTEND_URL = "http://localhost:3100";
+    let BACKEND_URL = "http://localhost:3101";
+
+    // Update URLs when config loads
+    window.addEventListener('configLoaded', () => {
+      BACKEND_URL = CONFIG.backendUrl;
+      console.log('Backend URL updated to:', BACKEND_URL);
+    });
 
     // Tab Management
     function showTab(tabName) {

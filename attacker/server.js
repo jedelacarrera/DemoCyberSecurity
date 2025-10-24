@@ -3,7 +3,10 @@ const path = require("path");
 const cors = require("cors");
 
 const app = express();
-const PORT = 3002;
+const PORT = process.env.PORT || 3002;
+
+// Backend URL configuration (can be overridden by environment variable)
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3101";
 
 // Storage para los datos robados
 const stolenData = {
@@ -16,6 +19,17 @@ const stolenData = {
 app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
+
+// =====================================================
+// CONFIGURATION ENDPOINT
+// =====================================================
+
+// Serve configuration to frontend
+app.get("/api/config", (req, res) => {
+  res.json({
+    backendUrl: BACKEND_URL,
+  });
+});
 
 // =====================================================
 // ENDPOINTS DE ATAQUE

@@ -236,7 +236,7 @@ curl -X POST http://localhost:3001/api/vulnerable/xss/posts \
   -d '{"title":"Test","content":"<script>alert(\"XSS\")</script>"}'
 
 # CSRF
-Open http://localhost:3002/csrf-attack.html in your browser
+Open http://localhost:3002/csrf-demo.html in your browser
 ```
 
 ### Testing Secure Endpoints
