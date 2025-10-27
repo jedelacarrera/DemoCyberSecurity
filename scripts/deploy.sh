@@ -26,9 +26,6 @@ else
     echo "  - PROJECT_ID"
     echo "  - REGION"
     echo "  - REPOSITORY"
-    echo "  - DB_INSTANCE_NAME"
-    echo "  - DB_USER"
-    echo "  - DB_NAME"
     echo "  - JWT_SECRET"
     echo "  - SESSION_SECRET"
     echo ""
@@ -90,10 +87,6 @@ _REPOSITORY=${REPOSITORY:-owasp-demo},\
 _SERVICE_NAME_BACKEND=${SERVICE_NAME_BACKEND:-owasp-demo-backend},\
 _SERVICE_NAME_FRONTEND=${SERVICE_NAME_FRONTEND:-owasp-demo-frontend},\
 _SERVICE_NAME_ATTACKER=${SERVICE_NAME_ATTACKER:-owasp-demo-attacker},\
-_DB_INSTANCE_NAME=${DB_INSTANCE_NAME:-owasp-demo-db},\
-_DB_USER=${DB_USER:-owasp_user},\
-_DB_NAME=${DB_NAME:-owasp_demo},\
-_DB_PASSWORD_SECRET=db-password,\
 _JWT_SECRET=${JWT_SECRET},\
 _SESSION_SECRET=${SESSION_SECRET},\
 _ENABLE_VULNERABLE=true,\
@@ -128,8 +121,13 @@ echo ""
 
 echo -e "${YELLOW}Next steps:${NC}"
 echo "1. Visit the frontend URL to access the application"
-echo "2. Run database migrations:"
-echo -e "   ${GREEN}./scripts/run-migrations.sh${NC}"
+echo "2. The demo data is automatically seeded on backend startup"
+echo ""
+echo -e "${GREEN}Demo users:${NC}"
+echo "  - admin/admin123 (role: admin)"
+echo "  - user/user123 (role: user)"
+echo "  - alice/alice123 (role: user)"
+echo "  - bob/bob123 (role: user)"
 echo ""
 echo -e "${RED}⚠️  Remember: This is a demo with intentionally vulnerable code.${NC}"
 echo -e "${RED}   Do not use in production or expose sensitive data.${NC}"
