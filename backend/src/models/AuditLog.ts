@@ -44,7 +44,7 @@ export const AuditLogFactory = (sequelize: Sequelize) => {
         allowNull: true,
       },
       metadata: {
-        type: DataTypes.JSONB,
+        type: DataTypes.JSON,
         allowNull: true,
         defaultValue: {},
       },

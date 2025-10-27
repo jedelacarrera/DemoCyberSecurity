@@ -30,7 +30,6 @@ else
     REGION=${REGION:-us-central1}
     
     REPOSITORY="owasp-demo"
-    DB_INSTANCE_NAME="owasp-demo-db"
     SERVICE_NAME_BACKEND="owasp-demo-backend"
     SERVICE_NAME_FRONTEND="owasp-demo-frontend"
     SERVICE_NAME_ATTACKER="owasp-demo-attacker"
@@ -38,9 +37,8 @@ fi
 
 echo -e "${YELLOW}This will delete:${NC}"
 echo "  - Cloud Run services: $SERVICE_NAME_BACKEND, $SERVICE_NAME_FRONTEND, $SERVICE_NAME_ATTACKER"
-echo "  - Cloud SQL instance: $DB_INSTANCE_NAME"
 echo "  - Artifact Registry repository: $REPOSITORY"
-echo "  - Secret Manager secrets: db-password, jwt-secret, session-secret"
+echo "  - Secret Manager secrets: jwt-secret, session-secret"
 echo ""
 echo -e "${RED}This action cannot be undone!${NC}"
 echo ""
@@ -74,27 +72,6 @@ done
 echo -e "${GREEN}✓ Cloud Run services deleted${NC}"
 echo ""
 
-# Delete Cloud SQL instance
-echo -e "${GREEN}Deleting Cloud SQL instance...${NC}"
-
-if gcloud sql instances describe "$DB_INSTANCE_NAME" --project="$PROJECT_ID" &> /dev/null; then
-    # First, delete any backups
-    echo "  Deleting backups..."
-    gcloud sql backups list --instance="$DB_INSTANCE_NAME" --project="$PROJECT_ID" --format="value(id)" | while read -r backup_id; do
-        gcloud sql backups delete "$backup_id" --instance="$DB_INSTANCE_NAME" --project="$PROJECT_ID" --quiet || true
-    done
-    
-    echo "  Deleting instance (this may take a few minutes)..."
-    gcloud sql instances delete "$DB_INSTANCE_NAME" \
-        --project="$PROJECT_ID" \
-        --quiet
-    echo -e "${GREEN}✓ Cloud SQL instance deleted${NC}"
-else
-    echo "  Instance not found, skipping..."
-fi
-
-echo ""
-
 # Delete Artifact Registry repository
 echo -e "${GREEN}Deleting Artifact Registry repository...${NC}"
 
@@ -113,7 +90,7 @@ echo ""
 # Delete Secret Manager secrets
 echo -e "${GREEN}Deleting Secret Manager secrets...${NC}"
 
-for secret in "db-password" "jwt-secret" "session-secret"; do
+for secret in "jwt-secret" "session-secret"; do
     if gcloud secrets describe "$secret" --project="$PROJECT_ID" &> /dev/null; then
         echo "  Deleting $secret..."
         gcloud secrets delete "$secret" \

@@ -2,11 +2,6 @@
 project_id = "your-gcp-project-id"
 region     = "us-central1"
 
-# Database Configuration
-db_name     = "owasp_demo"
-db_user     = "postgres"
-db_password = "CHANGE_ME_STRONG_PASSWORD"
-
 # Security Secrets (Generate strong random values!)
 jwt_secret     = "CHANGE_ME_JWT_SECRET"
 session_secret = "CHANGE_ME_SESSION_SECRET"

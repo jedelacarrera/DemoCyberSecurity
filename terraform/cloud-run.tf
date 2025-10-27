@@ -23,36 +23,6 @@ resource "google_cloud_run_service" "backend" {
         }
 
         env {
-          name  = "DB_HOST"
-          value = google_sql_database_instance.owasp_demo.public_ip_address
-        }
-
-        env {
-          name  = "DB_PORT"
-          value = "5432"
-        }
-
-        env {
-          name  = "DB_NAME"
-          value = var.db_name
-        }
-
-        env {
-          name  = "DB_USER"
-          value = var.db_user
-        }
-
-        env {
-          name = "DB_PASSWORD"
-          value_from {
-            secret_key_ref {
-              name = google_secret_manager_secret_version.db_password.secret
-              key  = "latest"
-            }
-          }
-        }
-
-        env {
           name = "JWT_SECRET"
           value_from {
             secret_key_ref {
@@ -105,8 +75,7 @@ resource "google_cloud_run_service" "backend" {
   }
 
   depends_on = [
-    google_project_service.cloud_run,
-    google_sql_database_instance.owasp_demo
+    google_project_service.cloud_run
   ]
 }
 

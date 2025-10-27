@@ -5,13 +5,11 @@ import { PostModel, PostFactory } from "./Post";
 import { SessionModel, SessionFactory } from "./Session";
 import { AuditLogModel, AuditLogFactory } from "./AuditLog";
 
+// Using in-memory SQLite for ephemeral demo data
+// Each Cloud Run instance gets fresh data on startup
 const sequelize = new Sequelize({
-  database: config.database.name,
-  username: config.database.user,
-  password: config.database.password,
-  host: config.database.host,
-  port: config.database.port,
-  dialect: "postgres",
+  dialect: "sqlite",
+  storage: ":memory:", // In-memory database - resets on restart
   logging: config.env === "development" ? console.log : false,
 });
 

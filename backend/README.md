@@ -5,7 +5,7 @@ Backend API demonstrating common OWASP Top 10 vulnerabilities and their secure i
 ## Tech Stack
 
 - **Framework:** Koa
-- **Database:** PostgreSQL
+- **Database:** SQLite (in-memory for ephemeral demo data)
 - **ORM:** Sequelize
 - **Language:** TypeScript
 
@@ -14,7 +14,6 @@ Backend API demonstrating common OWASP Top 10 vulnerabilities and their secure i
 ### Prerequisites
 
 - Node.js 18+
-- PostgreSQL 14+
 
 ### Installation
 
@@ -36,27 +35,13 @@ Edit `.env`:
 ```env
 NODE_ENV=development
 PORT=3001
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=owasp_demo
-DB_USER=postgres
-DB_PASSWORD=your_password
 JWT_SECRET=your-secret-key
+SESSION_SECRET=your-session-secret
+CORS_ORIGIN=http://localhost:3000
 ENABLE_VULNERABLE_ENDPOINTS=true
 ```
 
-### Database Setup
-
-```bash
-# Create database
-createdb owasp_demo
-
-# Run migrations
-npm run db:migrate
-
-# Seed data
-npm run db:seed
-```
+**Note:** No database setup required! The application uses in-memory SQLite and automatically seeds demo data on startup.
 
 ### Development
 
@@ -143,14 +128,12 @@ backend/
 ├── src/
 │   ├── config/          # Configuration
 │   ├── models/          # Sequelize models
-│   ├── migrations/      # Database migrations
-│   ├── seeders/         # Database seeders
 │   ├── routes/          # API routes
 │   │   ├── vulnerable/  # Vulnerable implementations
 │   │   └── secure/      # Secure implementations
 │   ├── middleware/      # Koa middleware
 │   ├── utils/           # Utility functions
-│   └── app.ts           # Main application
+│   └── app.ts           # Main application (includes auto-seeding)
 ├── package.json
 └── tsconfig.json
 ```

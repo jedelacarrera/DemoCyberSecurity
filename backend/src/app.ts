@@ -1,8 +1,9 @@
 import Koa, { Context } from "koa";
 import bodyParser from "koa-bodyparser";
 import cors from "@koa/cors";
+import bcrypt from "bcrypt";
 import { config } from "./config";
-import { sequelize } from "./models";
+import { sequelize, User, Post } from "./models";
 
 // Import routers
 import authRouter from "./routes/auth";
@@ -162,18 +163,85 @@ app.use(async (ctx) => {
   ctx.body = { success: false, error: "Not found" };
 });
 
+// Seed demo data
+const seedDemoData = async () => {
+  try {
+    console.log("🌱 Seeding demo data...");
+
+    const salt = await bcrypt.genSalt(10);
+
+    // Create demo users
+    await User.bulkCreate([
+      {
+        username: "admin",
+        email: "admin@example.com",
+        password: await bcrypt.hash("admin123", salt),
+        role: "admin",
+      },
+      {
+        username: "user",
+        email: "user@example.com",
+        password: await bcrypt.hash("user123", salt),
+        role: "user",
+      },
+      {
+        username: "alice",
+        email: "alice@example.com",
+        password: await bcrypt.hash("alice123", salt),
+        role: "user",
+      },
+      {
+        username: "bob",
+        email: "bob@example.com",
+        password: await bcrypt.hash("bob123", salt),
+        role: "user",
+      },
+    ]);
+
+    // Create demo posts
+    await Post.bulkCreate([
+      {
+        title: "Public Post",
+        content: "This is a public post visible to everyone.",
+        userId: 2, // user
+      },
+      {
+        title: "Alice Private Post",
+        content: "This is Alice's private post.",
+        userId: 3, // alice
+      },
+      {
+        title: "Bob Secret Post",
+        content: "This is Bob's secret post with confidential information.",
+        userId: 4, // bob
+      },
+      {
+        title: "Admin Announcement",
+        content: "This is an admin announcement.",
+        userId: 1, // admin
+      },
+    ]);
+
+    console.log("✅ Demo data seeded successfully.");
+    console.log(
+      "👤 Demo users: admin/admin123, user/user123, alice/alice123, bob/bob123"
+    );
+  } catch (error) {
+    console.error("❌ Error seeding demo data:", error);
+    throw error;
+  }
+};
+
 // Database connection and server start
 const startServer = async () => {
   try {
-    // Test database connection
-    await sequelize.authenticate();
-    console.log("✅ Database connection established successfully.");
+    // Sync database with force: true to recreate tables on every startup
+    // This ensures fresh demo data for each instance
+    await sequelize.sync({ force: true });
+    console.log("✅ Database synchronized (in-memory SQLite).");
 
-    // Sync database (in production, use migrations)
-    if (config.env === "development") {
-      await sequelize.sync({ alter: false });
-      console.log("✅ Database synchronized.");
-    }
+    // Seed demo data
+    await seedDemoData();
 
     // Start server
     const PORT = config.port;

@@ -53,9 +53,12 @@ export const UserFactory = (sequelize: Sequelize) => {
         allowNull: false,
       },
       role: {
-        type: DataTypes.ENUM("user", "admin"),
+        type: DataTypes.STRING(20),
         allowNull: false,
         defaultValue: "user",
+        validate: {
+          isIn: [["user", "admin"]],
+        },
       },
     },
     {

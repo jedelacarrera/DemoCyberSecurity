@@ -9,24 +9,6 @@ variable "region" {
   default     = "us-central1"
 }
 
-variable "db_name" {
-  description = "Database name"
-  type        = string
-  default     = "owasp_demo"
-}
-
-variable "db_user" {
-  description = "Database user"
-  type        = string
-  default     = "postgres"
-}
-
-variable "db_password" {
-  description = "Database password"
-  type        = string
-  sensitive   = true
-}
-
 variable "jwt_secret" {
   description = "JWT Secret for authentication"
   type        = string

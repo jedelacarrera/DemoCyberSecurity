@@ -28,14 +28,15 @@ chmod +x scripts/setup-gcp.sh
 
 Este script:
 
-- ✅ Habilita las APIs necesarias (Cloud Run, Cloud SQL, Artifact Registry, etc.)
+- ✅ Habilita las APIs necesarias (Cloud Run, Artifact Registry, etc.)
 - ✅ Crea un repositorio en Artifact Registry
-- ✅ Crea una instancia de Cloud SQL con PostgreSQL
-- ✅ Genera y almacena secretos de forma segura (passwords, JWT secrets)
+- ✅ Genera y almacena secretos de forma segura (JWT secrets, Session secrets)
 - ✅ Configura permisos para Cloud Build
 - ✅ Guarda la configuración en `gcp-config.env`
 
-**⚠️ Importante:** El script generará passwords y secrets. Guarda el archivo `gcp-config.env` en un lugar seguro.
+**⚠️ Importante:** El script generará secrets. Guarda el archivo `gcp-config.env` en un lugar seguro.
+
+**Nota:** Esta aplicación usa SQLite en memoria, por lo que no requiere Cloud SQL. Los datos se resetean en cada reinicio, perfecto para demos.
 
 ### Paso 2: Desplegar la Aplicación
 
@@ -56,25 +57,9 @@ Este script:
 - 🚀 Despliega los servicios en Cloud Run
 - 🔗 Te proporciona las URLs de acceso
 
-### Paso 3: Ejecutar Migraciones de Base de Datos
+**Nota:** No se requieren migraciones. La base de datos se inicializa automáticamente con datos de demo al iniciar cada instancia.
 
-Después del primer despliegue, ejecuta las migraciones para crear las tablas:
-
-```bash
-# Hacer el script ejecutable
-chmod +x scripts/run-migrations.sh
-
-# Ejecutar migraciones
-./scripts/run-migrations.sh
-```
-
-Este script:
-
-- 📊 Ejecuta las migraciones de Sequelize
-- 👥 Opcionalmente crea usuarios de demostración
-- 📝 Crea datos de ejemplo
-
-### Paso 4: Acceder a la Aplicación
+### Paso 3: Acceder a la Aplicación
 
 Las URLs de tus servicios se mostrarán al final del despliegue:
 
@@ -98,7 +83,6 @@ gcloud config set project TU_PROJECT_ID
 gcloud services enable \
     cloudbuild.googleapis.com \
     run.googleapis.com \
-    sqladmin.googleapis.com \
     artifactregistry.googleapis.com \
     secretmanager.googleapis.com
 ```
@@ -115,38 +99,19 @@ gcloud artifacts repositories create owasp-demo \
 gcloud auth configure-docker us-central1-docker.pkg.dev
 ```
 
-### 3. Crear Cloud SQL
-
-```bash
-# Crear instancia
-gcloud sql instances create owasp-demo-db \
-    --database-version=POSTGRES_15 \
-    --tier=db-f1-micro \
-    --region=us-central1 \
-    --authorized-networks=0.0.0.0/0
-
-# Crear base de datos
-gcloud sql databases create owasp_demo --instance=owasp-demo-db
-
-# Crear usuario
-gcloud sql users create owasp_user \
-    --instance=owasp-demo-db \
-    --password=TU_PASSWORD_SEGURO
-```
-
-### 4. Crear Secretos
+### 3. Crear Secretos
 
 ```bash
 # Generar secrets
-DB_PASSWORD=$(openssl rand -base64 32)
 JWT_SECRET=$(openssl rand -base64 32)
 SESSION_SECRET=$(openssl rand -base64 32)
 
 # Crear en Secret Manager
-echo -n "$DB_PASSWORD" | gcloud secrets create db-password --data-file=-
 echo -n "$JWT_SECRET" | gcloud secrets create jwt-secret --data-file=-
 echo -n "$SESSION_SECRET" | gcloud secrets create session-secret --data-file=-
 ```
+
+**Nota:** No se requiere Cloud SQL. La aplicación usa SQLite en memoria.
 
 ### 5. Desplegar con Cloud Build
 
@@ -236,30 +201,21 @@ gcloud run services describe owasp-demo-backend --region=us-central1
 
 Con uso mínimo (para demos/desarrollo):
 
-- **Cloud Run** (3 servicios): ~$0-50/mes (pago por uso)
-- **Cloud SQL** (db-f1-micro): ~$10-15/mes
-- **Artifact Registry**: ~$0.10/GB
-- **Secret Manager**: ~$0.06 por secreto/mes
+- **Cloud Run** (3 servicios): ~$0-10/mes (pago por uso, escala a cero cuando no se usa)
+- **Artifact Registry**: ~$0.10/GB de almacenamiento
+- **Secret Manager**: ~$0.06 por secreto/mes (2 secretos = ~$0.12/mes)
 
-**Total estimado**: $15-70/mes dependiendo del uso
+**Total estimado**: $1-15/mes dependiendo del uso
+
+**¡Ahorro significativo!** Al usar SQLite en memoria en lugar de Cloud SQL, se eliminan ~$10-15/mes de costos fijos.
 
 ### Optimización de Costos
 
-1. **Apaga la instancia de Cloud SQL cuando no la uses:**
+1. **Los servicios de Cloud Run** están configurados con `--min-instances=0`, por lo que escalan a cero cuando no reciben tráfico. **No hay costos cuando no se usa.**
 
-   ```bash
-   gcloud sql instances patch owasp-demo-db --activation-policy=NEVER
-   ```
+2. **Elimina imágenes antiguas** de Artifact Registry que no uses para reducir costos de almacenamiento
 
-   Para encenderla de nuevo:
-
-   ```bash
-   gcloud sql instances patch owasp-demo-db --activation-policy=ALWAYS
-   ```
-
-2. **Los servicios de Cloud Run** solo cobran cuando reciben tráfico (con `--min-instances=0`)
-
-3. **Elimina imágenes antiguas** de Artifact Registry que no uses
+3. **Detén Cloud Build** automáticamente después de cada build (ya configurado)
 
 ## 🧹 Limpieza de Recursos
 
@@ -283,14 +239,10 @@ gcloud run services delete owasp-demo-backend --region=us-central1 --quiet
 gcloud run services delete owasp-demo-frontend --region=us-central1 --quiet
 gcloud run services delete owasp-demo-attacker --region=us-central1 --quiet
 
-# Eliminar Cloud SQL
-gcloud sql instances delete owasp-demo-db --quiet
-
 # Eliminar Artifact Registry
 gcloud artifacts repositories delete owasp-demo --location=us-central1 --quiet
 
 # Eliminar secretos
-gcloud secrets delete db-password --quiet
 gcloud secrets delete jwt-secret --quiet
 gcloud secrets delete session-secret --quiet
 ```
@@ -308,8 +260,8 @@ gcloud secrets delete session-secret --quiet
 ⚠️ **Configuraciones de demo:**
 
 - Endpoints vulnerables habilitados (`ENABLE_VULNERABLE_ENDPOINTS=true`)
-- CORS permite todos los orígenes
-- Cloud SQL con IP pública
+- CORS permite todos los orígenes para endpoints vulnerables
+- Base de datos en memoria (se resetea en cada reinicio)
 - Credenciales de demo incluidas
 
 ### Si Necesitas Mayor Seguridad
@@ -328,12 +280,7 @@ gcloud secrets delete session-secret --quiet
    # Requiere autenticación para acceder
    ```
 
-3. **Usar Private IP para Cloud SQL:**
-
-   - Configurar VPC Connector
-   - Eliminar `--authorized-networks=0.0.0.0/0`
-
-4. **Rotar secretos regularmente:**
+3. **Rotar secretos regularmente:**
    ```bash
    NEW_SECRET=$(openssl rand -base64 32)
    echo -n "$NEW_SECRET" | gcloud secrets versions add jwt-secret --data-file=-
@@ -355,12 +302,12 @@ Verifica que el service account de Cloud Build tenga los permisos necesarios:
 ./scripts/setup-gcp.sh  # Ejecuta la configuración de nuevo
 ```
 
-### Error: "Database connection failed"
+### Backend no inicia correctamente
 
-1. Verifica que la instancia de Cloud SQL esté corriendo:
+1. Verifica los logs del servicio:
 
    ```bash
-   gcloud sql instances describe owasp-demo-db
+   gcloud run logs tail owasp-demo-backend
    ```
 
 2. Verifica las credenciales en Secret Manager

@@ -24,15 +24,11 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies and sequelize-cli for migrations
-RUN npm install --only=production && npm install sequelize-cli
+# Install production dependencies
+RUN npm install --only=production
 
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/src/migrations ./src/migrations
-COPY --from=builder /app/src/seeders ./src/seeders
-COPY --from=builder /app/src/config ./src/config
-COPY .sequelizerc ./
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \

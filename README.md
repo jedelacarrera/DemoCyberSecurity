@@ -40,7 +40,7 @@ Based on OWASP Top 10 2021 + additional security issues:
 ```
 DemoCyberSecurity/
 ├── frontend/          # Next.js 14 + React + Tailwind CSS
-├── backend/           # Koa + Sequelize + PostgreSQL
+├── backend/           # Koa + Sequelize + SQLite (in-memory)
 ├── attacker/          # Static HTML pages for cross-origin attacks
 ├── terraform/         # GCP infrastructure configuration
 ├── shared/            # Shared types and utilities
@@ -61,13 +61,12 @@ DemoCyberSecurity/
 
 - Koa
 - Sequelize ORM
-- PostgreSQL
+- SQLite (in-memory for ephemeral demo data)
 - TypeScript
 
 **Infrastructure:**
 
-- Google Cloud Run
-- Google Cloud SQL (PostgreSQL)
+- Google Cloud Run (scales to zero when unused)
 - Google Artifact Registry
 - Terraform
 
@@ -77,7 +76,6 @@ DemoCyberSecurity/
 
 - Node.js 18+
 - Docker & Docker Compose
-- PostgreSQL 14+ (for local development without Docker)
 
 ### Local Development with Docker
 
@@ -109,14 +107,9 @@ npm install
 
 # Configure environment
 cp env.template .env
-# Edit .env with your database credentials
+# Edit .env with your settings (database not needed - uses in-memory SQLite)
 
-# Setup database
-createdb owasp_demo
-npm run db:migrate
-npm run db:seed
-
-# Start development server
+# Start development server (will auto-seed demo data)
 npm run dev
 ```
 
@@ -187,9 +180,6 @@ chmod +x scripts/*.sh
 
 # 2. Deploy everything
 ./scripts/deploy.sh
-
-# 3. Run database migrations
-./scripts/run-migrations.sh
 ```
 
 ### Alternative: Manual Deployment with Terraform

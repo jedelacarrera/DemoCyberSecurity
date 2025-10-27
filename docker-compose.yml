@@ -1,26 +1,6 @@
 version: "3.8"
 
 services:
-  # PostgreSQL Database
-  db:
-    image: postgres:15-alpine
-    container_name: owasp-demo-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: owasp_demo
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - owasp-network
-
   # Backend API
   backend:
     build:
@@ -30,23 +10,15 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3001
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: owasp_demo
-      DB_USER: postgres
-      DB_PASSWORD: postgres
       JWT_SECRET: dev-secret-key-change-in-production
       SESSION_SECRET: dev-session-secret-change-in-production
       CORS_ORIGIN: http://localhost:3000
       ENABLE_VULNERABLE_ENDPOINTS: "true"
     ports:
       - "3001:3001"
-    depends_on:
-      db:
-        condition: service_healthy
     volumes:
       - ./backend/src:/app/src
-    command: sh -c "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all && npm run dev"
+    command: npm run dev
     networks:
       - owasp-network
 
@@ -82,9 +54,6 @@ services:
       - backend
     networks:
       - owasp-network
-
-volumes:
-  postgres_data:
 
 networks:
   owasp-network:

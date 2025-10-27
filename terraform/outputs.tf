@@ -13,16 +13,6 @@ output "attacker_url" {
   description = "Attacker site URL"
 }
 
-output "database_info" {
-  value = {
-    connection_name = google_sql_database_instance.owasp_demo.connection_name
-    public_ip       = google_sql_database_instance.owasp_demo.public_ip_address
-    database_name   = google_sql_database.owasp_demo.name
-  }
-  description = "Database connection information"
-  sensitive   = true
-}
-
 output "service_account_email" {
   value       = google_service_account.cloud_run.email
   description = "Service account email for Cloud Run"

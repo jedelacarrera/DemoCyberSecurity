@@ -20,18 +20,8 @@ resource "google_project_service" "cloud_run" {
   disable_on_destroy = false
 }
 
-resource "google_project_service" "cloud_sql" {
-  service = "sqladmin.googleapis.com"
-  disable_on_destroy = false
-}
-
 resource "google_project_service" "artifact_registry" {
   service = "artifactregistry.googleapis.com"
-  disable_on_destroy = false
-}
-
-resource "google_project_service" "vpcaccess" {
-  service = "vpcaccess.googleapis.com"
   disable_on_destroy = false
 }
 
